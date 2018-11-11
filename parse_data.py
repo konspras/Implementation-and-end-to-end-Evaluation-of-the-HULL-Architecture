@@ -11,7 +11,7 @@ import matplotlib.pyplot as plt
 
 
 def main():
-    out_file_name = sys.argv[1]
+    out_folder_name = sys.argv[1]
     number_of_paths = int(sys.argv[2])
     paths = sys.argv[3:3+number_of_paths]
     x_axis_title = sys.argv[3+number_of_paths] 
@@ -29,24 +29,11 @@ def main():
         load_files(path_num, path, x_axis, max_latency_per_query, means, means_99)
 
     #Create mean_latency - x_axis graph
-    fig, ax = plt.subplots(nrows=1, ncols=1, figsize=(20,10))
-    for i in range(0,shape[0]):
-        label = paths[i].split("/")[-1]
-        ax.plot(x_axis, means[i]*1000.0, label="mean "+label, marker='o') 
-        ax.plot(x_axis, means_99[i]*1000.0, ':', label="99th% "+label, marker='o')     
-    
-    ax.set_title("Average Latency vs " + x_axis_title)
-    ax.legend(loc='upper left')
-    ax.set_ylabel('miliseconds')
-    ax.set_xlabel(x_axis_title)
-    ax.grid(linestyle="-")
-    ax.set_xlim(left=x_axis[0], right=x_axis[len(x_axis)-1])
-    fig.tight_layout()   
-    try:
-        os.makedirs("plots/"+out_file_name)
-    except FileExistsError:
-        "Plots file already exists"
-    fig.savefig("plots/"+out_file_name+"/Latency_vs_"+x_axis_title+".png", format="png")
+    plot_mean_lat_vs_xaxis(shape, paths, x_axis, means, means_99, x_axis_title,
+                            out_folder_name, log_y=False)
+    plot_mean_lat_vs_xaxis(shape, paths, x_axis, means, means_99, x_axis_title,
+                            out_folder_name, log_y=True)
+
 
     # Create latency vs time graph
     # if len(sys.argv) < 3:
@@ -62,6 +49,37 @@ def main():
     #     #ax.set_xlim(left=loads[0], right=loads[len(loads)-1])
     #     fig.tight_layout()   
     #     fig.savefig("plots/lat_vs_time.png", format="png")
+
+
+def plot_mean_lat_vs_xaxis(shape, paths, x_axis, means, means_99, x_axis_title,
+                            out_folder_name, log_y=False):
+    #Create mean_latency - x_axis graph
+    fig, ax = plt.subplots(nrows=1, ncols=1, figsize=(20,10))
+    for i in range(0,shape[0]):
+        label = paths[i].split("/")[-1]
+        if log_y:
+            ax.semilogy(x_axis, means[i]*1000.0, label="mean "+label, marker='o') 
+            ax.semilogy(x_axis, means_99[i]*1000.0, ':', label="99th% "+label, marker='o')         
+        else:
+            ax.plot(x_axis, means[i]*1000.0, label="mean "+label, marker='o') 
+            ax.plot(x_axis, means_99[i]*1000.0, ':', label="99th% "+label, marker='o')     
+    
+    ax.set_title("Average Latency vs " + x_axis_title)
+    ax.legend(loc='upper left')
+    ax.set_ylabel('miliseconds')
+    ax.set_xlabel(x_axis_title)
+    ax.grid(linestyle="-")
+    ax.set_xlim(left=x_axis[0], right=x_axis[len(x_axis)-1])
+    fig.tight_layout()   
+    try:
+        os.makedirs("plots/"+out_folder_name)
+    except FileExistsError:
+        "Plots file already exists"
+
+    if log_y:
+        fig.savefig("plots/"+out_folder_name+"/Latency_vs_"+x_axis_title+"|logY.png", format="png")
+    else:
+        fig.savefig("plots/"+out_folder_name+"/Latency_vs_"+x_axis_title+".png", format="png")
 
 
 

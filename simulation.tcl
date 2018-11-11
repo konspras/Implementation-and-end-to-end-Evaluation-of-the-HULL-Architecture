@@ -15,19 +15,26 @@ if {$workload_type == 0} {
     set resp_size 100
     set mean_service_time_s 0.0001
     set traffic_duration 1.0
-
 } elseif {$workload_type == 1} {
     set req_size 3500
     set resp_size 2800
     set mean_service_time_s 0.00253
     set traffic_duration 10.0
-
+} elseif {$workload_type == 2} {
+    set req_size 100
+    set resp_size 100
+    set mean_service_time_s 0.00253
+    set traffic_duration 10.0
+} elseif {$workload_type == 3} {
+    set req_size 3500
+    set resp_size 2800
+    set mean_service_time_s 0.0001
+    set traffic_duration 1.0
 } else {
     set req_size 3500
     set resp_size 2800
     set mean_service_time_s 0.00253
     set traffic_duration 10.0
-
 }
 
 set exp_distr_mean [expr [expr 1.0/[expr $server_load/100.0]] \
@@ -228,9 +235,9 @@ Application/TcpApp instproc server-recv { size connection_id query_id } {
                 set process_this_query_at $occupied_until
                 #puts "currently busy"
         }
-        if {$workload_type == 0} {
+        if {$workload_type == 0 || $workload_type == 3} {
             set query_proc_time $mean_service_time_s
-        } else {
+        } elseif {$workload_type == 1 || $workload_type == 2} {
             set query_proc_time [expr [expr 180 * [$gamma_var value] + 10000.0]/1000000000.0]
         }
         #puts "query_proc_time $query_proc_time"
