@@ -1,8 +1,10 @@
 # Csv files
 *.csv
 
-# Plots
-*.png
+# Nam and trace files (ns-2)
+*.nam
+*.tr
+
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

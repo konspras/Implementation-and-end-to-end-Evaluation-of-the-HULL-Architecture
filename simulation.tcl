@@ -2,10 +2,13 @@
 
 #cmd args order: num_flows, server_load
 
-set num_flows [lindex $argv 0]
+set result_path [lindex $argv 0]
+# used to identify the output files
+set file_ident [lindex $argv 1]
+set num_flows [lindex $argv 2]
 # server load in %
-set server_load [lindex $argv 1]
-set workload_type [lindex $argv 2]
+set server_load [lindex $argv 3]
+set workload_type [lindex $argv 4]
 
 if {$workload_type == 0} {
     set req_size 100
@@ -33,9 +36,11 @@ set simulation_duration 50
 set traffic_start_time 1.0
 
 proc dispRes {} {
-    global tcp num_flows sendTimesList receiveTimesList
+    global tcp num_flows server_load workload_type sendTimesList receiveTimesList
     
     for {set i 0} {$i < $num_flows} {incr i} {
+        puts "num_flows: $num_flows, server_load: $server_load, workload_type: \
+                $workload_type"
         set numPktsSent [$tcp($i) set ndatapack_]
         set numBytesSent [$tcp($i) set ndatabytes_]
         set numAcksRec [$tcp($i) set nackpack_]
@@ -59,12 +64,12 @@ proc dispRes {} {
 }
 
 proc saveToFile {} {
-    global sendTimesList receiveTimesList num_flows server_load
+    global result_path file_ident sendTimesList receiveTimesList num_flows
         
     #puts "sendTimesList $sendTimesList"
     #puts "receiveTimesList $receiveTimesList"
-    set sfp [open "results/send_latencies$server_load.csv" w+]
-    set rfp [open "results/rec_latencies$server_load.csv" w+]
+    set sfp [open "$result_path/send_times$file_ident.csv" w+]
+    set rfp [open "$result_path/rec_times$file_ident.csv" w+]
     set num_iter [llength [lindex $sendTimesList 0]]
     for {set i 1} {$i < $num_iter} {incr i} {
         for {set j 0} {$j < $num_flows} {incr j} {
@@ -85,7 +90,7 @@ proc finish {} {
     saveToFile
     $ns flush-trace
     #Close the NAM trace file
-    close $nf
+    #close $nf
     close $tf
     #Execute NAM on the trace file
     #exec nam out.nam &
@@ -97,8 +102,8 @@ set ns [new Simulator]
 set tf [open out.tr w]
 $ns trace-all $tf
 
-set nf [open out.nam w]
-$ns namtrace-all $nf
+# set nf [open out.nam w]
+# $ns namtrace-all $nf
 
 #Nodes
 set switch_node [$ns node]
