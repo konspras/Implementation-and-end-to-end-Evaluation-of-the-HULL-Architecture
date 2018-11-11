@@ -54,15 +54,20 @@ def main():
 def plot_mean_lat_vs_xaxis(shape, paths, x_axis, means, means_99, x_axis_title,
                             out_folder_name, log_y=False):
     #Create mean_latency - x_axis graph
+    markers = ["o","v","1","s","p","P","*","x"]
     fig, ax = plt.subplots(nrows=1, ncols=1, figsize=(20,10))
     for i in range(0,shape[0]):
         label = paths[i].split("/")[-1]
         if log_y:
-            ax.semilogy(x_axis, means[i]*1000.0, label="mean "+label, marker='o') 
-            ax.semilogy(x_axis, means_99[i]*1000.0, ':', label="99th% "+label, marker='o')         
+            ax.semilogy(x_axis, means[i]*1000.0, label="mean "+label, 
+                        marker=markers[i%len(markers)]) 
+            ax.semilogy(x_axis, means_99[i]*1000.0, ':', label="99th% "+label, 
+                        marker=markers[i%len(markers)])         
         else:
-            ax.plot(x_axis, means[i]*1000.0, label="mean "+label, marker='o') 
-            ax.plot(x_axis, means_99[i]*1000.0, ':', label="99th% "+label, marker='o')     
+            ax.plot(x_axis, means[i]*1000.0, label="mean "+label, 
+                        marker=markers[i%len(markers)]) 
+            ax.plot(x_axis, means_99[i]*1000.0, ':', label="99th% "+label, 
+                        marker=markers[i%len(markers)])     
     
     ax.set_title("Average Latency vs " + x_axis_title)
     ax.legend(loc='upper left')

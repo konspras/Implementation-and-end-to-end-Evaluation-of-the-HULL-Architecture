@@ -9,6 +9,10 @@ set num_flows [lindex $argv 2]
 # server load in %
 set server_load [lindex $argv 3]
 set workload_type [lindex $argv 4]
+# in Mbps
+set link_speed 10000Mb
+# in ms
+set link_latency 0.01ms
 
 if {$workload_type == 0} {
     set req_size 100
@@ -39,7 +43,7 @@ if {$workload_type == 0} {
 
 set exp_distr_mean [expr [expr 1.0/[expr $server_load/100.0]] \
                         *$mean_service_time_s]
-set simulation_duration 50
+set simulation_duration 100
 set traffic_start_time 1.0
 
 proc dispRes {} {
@@ -120,10 +124,10 @@ for {set i 0} {$i < $num_flows} {incr i} {
 }
 
 #Connect Nodes
-$ns duplex-link $switch_node $client_node 1000Mb 0.1ms DropTail
+$ns duplex-link $switch_node $client_node $link_speed $link_latency DropTail
 
 for {set i 0} {$i < $num_flows} {incr i} {
-    $ns duplex-link $s($i) $switch_node 1000Mb 0.1ms DropTail
+    $ns duplex-link $s($i) $switch_node $link_speed $link_latency DropTail
 }
 
 #Set Agents. For each server, a FullTcp agent and a TcpApp Application are created.
