@@ -4,6 +4,7 @@
 # Nam and trace files (ns-2)
 *.nam
 *.tr
+q_trace
 
 
 # Byte-compiled / optimized / DLL files

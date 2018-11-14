@@ -9,10 +9,34 @@ set num_flows [lindex $argv 2]
 # server load in %
 set server_load [lindex $argv 3]
 set workload_type [lindex $argv 4]
+set DCTCP [lindex $argv 5]
 # in Mbps
-set link_speed 10000Mb
+set link_speed [lindex $argv 6]Mb
 # in ms
-set link_latency 0.01ms
+set link_latency 0.05ms
+
+# DCTCP
+#set DCTCP_K  20
+set DCTCP_g  [expr 1.0/16.0]
+set ackRatio 1
+set queue_size  100
+
+puts "$result_path, $file_ident, $num_flows, $server_load, $workload_type \
+        $DCTCP, $link_speed"
+Queue set limit_ $queue_size
+
+Queue/DropTail set drop_prio_ false
+Queue/DropTail set deque_prio_ false
+
+Queue/RED set setbit_ true
+Queue/RED set gentle_ false
+Queue/RED set q_weight_ 1.0
+Queue/RED set mark_p_ 1.0
+Queue/RED set thresh_ $DCTCP
+Queue/RED set maxthresh_ $DCTCP
+Queue/RED set drop_prio_ false
+Queue/RED set deque_prio_ false
+
 
 if {$workload_type == 0} {
     set req_size 100
@@ -47,11 +71,12 @@ set simulation_duration 100
 set traffic_start_time 1.0
 
 proc dispRes {} {
-    global tcp num_flows server_load workload_type sendTimesList receiveTimesList
+    global tcp num_flows server_load workload_type sendTimesList receiveTimesList \
+            DCTCP
     
     for {set i 0} {$i < $num_flows} {incr i} {
         puts "num_flows: $num_flows, server_load: $server_load, workload_type: \
-                $workload_type"
+                $workload_type, DCTCP: $DCTCP"
         set numPktsSent [$tcp($i) set ndatapack_]
         set numBytesSent [$tcp($i) set ndatabytes_]
         set numAcksRec [$tcp($i) set nackpack_]
@@ -124,30 +149,65 @@ for {set i 0} {$i < $num_flows} {incr i} {
 }
 
 #Connect Nodes
-$ns duplex-link $switch_node $client_node $link_speed $link_latency DropTail
+if {$DCTCP != 0} {
+    $ns duplex-link $switch_node $client_node $link_speed $link_latency RED
+    for {set i 0} {$i < $num_flows} {incr i} {
+        $ns duplex-link $s($i) $switch_node $link_speed $link_latency RED
+    }
+} else {
+    $ns duplex-link $switch_node $client_node $link_speed $link_latency DropTail
+    for {set i 0} {$i < $num_flows} {incr i} {
+        $ns duplex-link $s($i) $switch_node $link_speed $link_latency DropTail
+    }
 
-for {set i 0} {$i < $num_flows} {incr i} {
-    $ns duplex-link $s($i) $switch_node $link_speed $link_latency DropTail
+}
+
+#Monitor the queue for link (s1-h3). (for NAM)
+#$ns duplex-link-op $switch_node $dst_node queuePos 0.5
+
+if {$DCTCP != 0} {
+    Agent/TCP set ecn_ 1
+    Agent/TCP set old_ecn_ 1
+    Agent/TCP/FullTcp set spa_thresh_ 0
+    Agent/TCP set slow_start_restart_ true
+    Agent/TCP set windowOption_ 0
+    Agent/TCP set tcpTick_ 0.000001
+#    Agent/TCP set minrto_ $min_rto
+#    Agent/TCP set maxrto_ 2
+    
+    Agent/TCP/FullTcp set nodelay_ true; # disable Nagle
+    Agent/TCP/FullTcp set segsperack_ $ackRatio;
+    Agent/TCP/FullTcp set interval_ 0.000006
+
+    Agent/TCP set ecnhat_ true
+    Agent/TCPSink set ecnhat_ true
+    Agent/TCP set ecnhat_g_ $DCTCP_g;
 }
 
 #Set Agents. For each server, a FullTcp agent and a TcpApp Application are created.
 for {set i 0} {$i < $num_flows} {incr i} {
-        set tcp($i) [new Agent/TCP/FullTcp]
-        set sink($i) [new Agent/TCP/FullTcp]
-        $ns attach-agent $client_node $tcp($i)
-        $ns attach-agent $s($i) $sink($i)
-        $tcp($i) set fid_ [expr $i]
-        $sink($i) set fid_ [expr $i]
-        $ns connect $tcp($i) $sink($i)
-        $sink($i) listen
+    set tcp($i) [new Agent/TCP/FullTcp]
+    set sink($i) [new Agent/TCP/FullTcp]
+    $ns attach-agent $client_node $tcp($i)
+    $ns attach-agent $s($i) $sink($i)
+    $tcp($i) set fid_ [expr $i]
+    $sink($i) set fid_ [expr $i]
+    $ns connect $tcp($i) $sink($i)
+    $sink($i) listen
 
-        #Set client application
-        set app_client($i) [new Application/TcpApp $tcp($i)]
-        #Set server application
-        set app_server($i) [new Application/TcpApp $sink($i)]
-        #Connect them
-        $app_client($i) connect $app_server($i)
-    }
+    #Set client application
+    set app_client($i) [new Application/TcpApp $tcp($i)]
+    #Set server application
+    set app_server($i) [new Application/TcpApp $sink($i)]
+    #Connect them
+    $app_client($i) connect $app_server($i)
+}
+
+# queue monitoring
+set qf_size [open "q_trace" w]
+set qmon_size [$ns monitor-queue $client_node $switch_node $qf_size 0.01]
+[$ns link $client_node $switch_node] queue-sample-timeout
+
 
 # Network Setup Complete - Proceed with sending queries ----------------------
 #-----------------------------------------------------------------------------
