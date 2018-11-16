@@ -150,17 +150,32 @@ for {set i 0} {$i < $num_flows} {incr i} {
 
 #Connect Nodes
 if {$DCTCP != 0} {
-    $ns duplex-link $switch_node $client_node $link_speed $link_latency RED
+    #$ns duplex-link $switch_node $client_node $link_speed $link_latency RED
+    $ns simplex-link $switch_node $client_node $link_speed $link_latency RED
+    $ns simplex-link-op $switch_node $client_node phantomQueue
+    $ns simplex-link $client_node $switch_node $link_speed $link_latency RED
     for {set i 0} {$i < $num_flows} {incr i} {
-        $ns duplex-link $s($i) $switch_node $link_speed $link_latency RED
+        #$ns duplex-link $s($i) $switch_node $link_speed $link_latency RED
+        $ns simplex-link $s($i) $switch_node $link_speed $link_latency RED
+        $ns simplex-link $switch_node $s($i) $link_speed $link_latency RED
+        $ns simplex-link-op $switch_node $s($i) phantomQueue
     }
 } else {
-    $ns duplex-link $switch_node $client_node $link_speed $link_latency DropTail
+    #$ns duplex-link $switch_node $client_node $link_speed $link_latency DropTail
+    $ns simplex-link $switch_node $client_node $link_speed $link_latency DropTail
+    $ns simplex-link-op $switch_node $client_node phantomQueue
+    $ns simplex-link $client_node $switch_node $link_speed $link_latency DropTail
     for {set i 0} {$i < $num_flows} {incr i} {
-        $ns duplex-link $s($i) $switch_node $link_speed $link_latency DropTail
+        #$ns duplex-link $s($i) $switch_node $link_speed $link_latency DropTail
+        $ns simplex-link $s($i) $switch_node $link_speed $link_latency DropTail
+        $ns simplex-link $switch_node $s($i) $link_speed $link_latency DropTail
+        $ns simplex-link-op $switch_node $s($i) phantomQueue
     }
 
 }
+
+#$ns simplex-link-op $switch_node $client_node dynamic
+#$ns simplex-link-op $switch_node $client_node phantomQueue
 
 #Monitor the queue for link (s1-h3). (for NAM)
 #$ns duplex-link-op $switch_node $dst_node queuePos 0.5
