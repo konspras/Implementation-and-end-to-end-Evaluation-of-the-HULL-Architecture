@@ -72,10 +72,12 @@ class LinkDelay : public Connector {
 				 *  changes */
 	int has_PQ_;
 	// Should be in bytes
-	double PQ_thresh_;
-	double PQ_drain_rate_;
+
 	// current PQ level in bytes
 	double PQ_current_q_util_;
+	double PQ_last_time_recvd_;
+	double PQ_thresh_;
+	double PQ_drain_rate_;
 };
 
 #endif

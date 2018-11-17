@@ -40,11 +40,14 @@ static const char rcsid[] =
 #include "delay.h"
 #include "mcast_ctrl.h"
 #include "ctrMcast.h"
+#include "flags.h"
+
 
 static class LinkDelayClass : public TclClass {
 public:
 	LinkDelayClass() : TclClass("DelayLink") {}
 	TclObject* create(int /* argc */, const char*const* /* argv */) {
+		//printf("TCL obj create\n");
 		return (new LinkDelay);
 	}
 } class_delay_link;
@@ -56,23 +59,25 @@ LinkDelay::LinkDelay()
 	  PQ_current_q_util_(0),
 	  has_PQ_(0)
 {
-	printf("LinkDelay::LinkDelay\n");
+	//printf("LinkDelay::LinkDelay\n");
 	bind_bw("bandwidth_", &bandwidth_);
+	bind("PQ_drain_rate_", &PQ_drain_rate_);
+	bind("PQ_thresh_", &PQ_thresh_);
 	bind_time("delay_", &delay_);
 	bind_bool("avoidReordering_", &avoidReordering_);
 }
 
 int LinkDelay::command(int argc, const char*const* argv)
 {
-	printf("LinkDelay::command. argc: %d\n", argc);
+	//printf("LinkDelay::command. argc: %d\n", argc);
 	if (argc == 2) {
 		if (strcmp(argv[1], "isDynamic") == 0) {
-			printf("it is dynamic_\n");
+			//printf("it is dynamic_\n");
 			dynamic_ = 1;
 			itq_ = new PacketQueue();
 			return TCL_OK;
 		} else if (strcmp(argv[1], "hasPQ") == 0) {
-			printf("HAS PQ!\n");
+			//printf("HAS PQ!\n");
 			has_PQ_ = 1;
 			return TCL_OK;
 		}
@@ -93,14 +98,38 @@ int LinkDelay::command(int argc, const char*const* argv)
 
 void LinkDelay::recv(Packet* p, Handler* h)
 {
-	printf("LinkDelay::recv at time %f. Has PQ?: %d\n", Scheduler::instance().clock(), has_PQ_);
+	//printf("LinkDelay::recv %d bytes at time %f. Has PQ?: %d\n", hdr_cmn::access(p)->size(), Scheduler::instance().clock(), has_PQ_);
+
+	// if(has_PQ_) {
+	// 	hdr_flags* hf = hdr_flags::access(p);
+	// 	hdr_ip* iph = hdr_ip::access(p);
+	// 	hf->ce();
+	// 	//if(hf->ect()) printf("ECN compatible");
+	// 	hf->ecnecho();
+	// 	iph->saddr();
+	// 	iph->sport();
+	// 	iph->daddr();
+	// 	iph->dport();
+	// 	iph->flowid();
+	// 	//printf("ce:%s\n", hf->ce());
+	// 	// this can crash as well
+ // 		//printf("ect:%s\n", hf->ect());
+ // 		// crashes with DCTCP
+ // 		//printf("ecnecho(TCP):%s\n", hf->ecnecho());
+
+ // 		// printf("src addr %d, port%d\n", iph->saddr(),iph->sport());
+ // 		// printf("dst addr %d, port%d\n", iph->daddr(),iph->dport());
+ // 		// printf("flow id %d\n", iph->flowid());
+ // 		//printf("-------------------------------------------------\n");
+
+	// }
 	double txt = txtime(p);
-	
+
 	if (has_PQ_) {
 		double now_ = Scheduler::instance().clock();		
-		double elapsed_time = now_ - latest_time_;
+		double elapsed_time = now_ - PQ_last_time_recvd_;
 		// Decrease PQ_util based on the reduced BW and the elapsed time.
-		long bytes_sent = ((bandwidth_ * PQ_drain_rate_) * elapsed_time)/8.0; //bits/8
+		double bytes_sent = ((bandwidth_ * PQ_drain_rate_) * elapsed_time)/8.0; //bits/8
 		PQ_current_q_util_ -= bytes_sent;
 		if(PQ_current_q_util_ < 0) 
 			PQ_current_q_util_ = 0.0;
@@ -109,21 +138,35 @@ void LinkDelay::recv(Packet* p, Handler* h)
  		
  		// Check if queue size exceeds threshold. If so, mark CE
  		if(PQ_current_q_util_ > PQ_thresh_){
- 			printf("MARK EC\n");
+ 			//printf("~~~~~MARK EC~~~~~~ : Q is: %f, rate is %f thresh %f\n", PQ_current_q_util_,PQ_drain_rate_, PQ_thresh_);
+ 			hdr_flags* hf = hdr_flags::access(p);
+			hdr_ip* iph = hdr_ip::access(p);
+			if(hf->ect()){
+				hf->ce() = 1;
+			}
+
+ 			// printf("ce:%s\n", hf->ce());
+ 			// printf("ect:%s\n", hf->ect());
+ 			// printf("ecnecho(TCP):%s\n", hf->ecnecho());
+
+ 			// printf("src addr %d, port%d\n", iph->saddr(),iph->sport());
+ 			// printf("dst addr %d, port%d\n", iph->daddr(),iph->dport());
+ 			// printf("flow id %d\n", iph->flowid());
  		}
- 		latest_time_ = now_ + txt + delay_;
-		printf("CURRENT PQ Size: %f\n",PQ_current_q_util_);	
+ 		PQ_last_time_recvd_ = now_;
+		//printf(">NEXT PQ Size: %f\n",PQ_current_q_util_);	
+
 	}
 	
 	Scheduler& s = Scheduler::instance();
 	if (dynamic_) {
-		printf("isDynamic\n");
+		//printf("isDynamic\n");
 		Event* e = (Event*)p;
 		e->time_= txt + delay_;
 		itq_->enque(p); // for convinience, use a queue to store packets in transit
 		s.schedule(this, p, txt + delay_);
 	} else if (avoidReordering_) {
-		printf("avoidReordering_\n");
+		//printf("avoidReordering_\n");
 		// code from Andrei Gurtov, to prevent reordering on
 		//   bandwidth or delay changes
  		double now_ = Scheduler::instance().clock();
@@ -136,7 +179,6 @@ void LinkDelay::recv(Packet* p, Handler* h)
  		}
 
 	} else {
-		printf("Scheduling for %f\n", txt + delay_);
 		// Pass to downstream objetc (TTL?). will invoke recv(p) of dnstrm obj
 		s.schedule(target_, p, txt + delay_);
 	}
@@ -147,13 +189,13 @@ void LinkDelay::recv(Packet* p, Handler* h)
 
 void LinkDelay::send(Packet* p, Handler*)
 {
-	printf("LinkDelay::send\n");
+	//printf("LinkDelay::send\n");
 	target_->recv(p, (Handler*) NULL);
 }
 
 void LinkDelay::reset()
 {
-	printf("LinkDelay::reset\n");
+	//printf("LinkDelay::reset\n");
 	Scheduler& s= Scheduler::instance();
 
 	if (itq_ && itq_->length()) {
@@ -168,7 +210,7 @@ void LinkDelay::reset()
 
 void LinkDelay::handle(Event* e)
 {
-	printf("LinkDelay::handle\n");
+	//printf("LinkDelay::handle\n");
 	Packet *p = itq_->deque();
 	assert(p->time_ == e->time_);
 	send(p, (Handler*) NULL);
@@ -176,7 +218,7 @@ void LinkDelay::handle(Event* e)
 
 void LinkDelay::pktintran(int src, int group)
 {
-	printf("LinkDelay::pktintran\n");
+	//printf("LinkDelay::pktintran\n");
 	int reg = 1;
 	int prune = 30;
 	int graft = 31;

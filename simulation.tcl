@@ -12,6 +12,11 @@ set workload_type [lindex $argv 4]
 set DCTCP [lindex $argv 5]
 # in Mbps
 set link_speed [lindex $argv 6]Mb
+set has_PQ [lindex $argv 7]
+set PQ_rate [lindex $argv 8]
+set PQ_thresh [lindex $argv 9]
+set queue_size [lindex $argv 10]
+
 # in ms
 set link_latency 0.05ms
 
@@ -19,9 +24,8 @@ set link_latency 0.05ms
 #set DCTCP_K  20
 set DCTCP_g  [expr 1.0/16.0]
 set ackRatio 1
-set queue_size  100
 
-puts "$result_path, $file_ident, $num_flows, $server_load, $workload_type \
+#puts "$result_path, $file_ident, $num_flows, $server_load, $workload_type \
         $DCTCP, $link_speed"
 Queue set limit_ $queue_size
 
@@ -75,7 +79,7 @@ proc dispRes {} {
             DCTCP
     
     for {set i 0} {$i < $num_flows} {incr i} {
-        puts "num_flows: $num_flows, server_load: $server_load, workload_type: \
+        #puts "num_flows: $num_flows, server_load: $server_load, workload_type: \
                 $workload_type, DCTCP: $DCTCP"
         set numPktsSent [$tcp($i) set ndatapack_]
         set numBytesSent [$tcp($i) set ndatabytes_]
@@ -152,28 +156,35 @@ for {set i 0} {$i < $num_flows} {incr i} {
 if {$DCTCP != 0} {
     #$ns duplex-link $switch_node $client_node $link_speed $link_latency RED
     $ns simplex-link $switch_node $client_node $link_speed $link_latency RED
-    $ns simplex-link-op $switch_node $client_node phantomQueue
+    if {$has_PQ} {
+        $ns simplex-link-op $switch_node $client_node phantomQueue $PQ_rate $PQ_thresh
+    }
     $ns simplex-link $client_node $switch_node $link_speed $link_latency RED
     for {set i 0} {$i < $num_flows} {incr i} {
         #$ns duplex-link $s($i) $switch_node $link_speed $link_latency RED
         $ns simplex-link $s($i) $switch_node $link_speed $link_latency RED
         $ns simplex-link $switch_node $s($i) $link_speed $link_latency RED
-        $ns simplex-link-op $switch_node $s($i) phantomQueue
+        if {$has_PQ} {
+            $ns simplex-link-op $switch_node $s($i) phantomQueue $PQ_rate $PQ_thresh
+        }
     }
 } else {
     #$ns duplex-link $switch_node $client_node $link_speed $link_latency DropTail
     $ns simplex-link $switch_node $client_node $link_speed $link_latency DropTail
-    $ns simplex-link-op $switch_node $client_node phantomQueue
+    if {$has_PQ} {
+        $ns simplex-link-op $switch_node $client_node phantomQueue $PQ_rate $PQ_thresh
+    }
     $ns simplex-link $client_node $switch_node $link_speed $link_latency DropTail
     for {set i 0} {$i < $num_flows} {incr i} {
         #$ns duplex-link $s($i) $switch_node $link_speed $link_latency DropTail
         $ns simplex-link $s($i) $switch_node $link_speed $link_latency DropTail
         $ns simplex-link $switch_node $s($i) $link_speed $link_latency DropTail
-        $ns simplex-link-op $switch_node $s($i) phantomQueue
+        if {$has_PQ} {
+            $ns simplex-link-op $switch_node $s($i) phantomQueue $PQ_rate $PQ_thresh
+        }
     }
 
 }
-
 #$ns simplex-link-op $switch_node $client_node dynamic
 #$ns simplex-link-op $switch_node $client_node phantomQueue
 
@@ -254,7 +265,6 @@ proc initiate_lists {} {
             lappend busy_until 0.0
     }
 }
-
 # Send requests for $simulation duration time
 initiate_lists
 set query_id 0
@@ -274,9 +284,6 @@ while {$nextQueryTime < $traffic_end_time} {
     set nextQueryTime [expr $nextQueryTime + [$send_interval value]]
     incr query_id
 }
-
-
-
 
 
 
