@@ -73,8 +73,12 @@ def plot_mean_lat_vs_xaxis(shape, paths, x_axis, means, means_99, x_axis_title,
     ax.legend(loc='upper left')
     ax.set_ylabel('miliseconds')
     ax.set_xlabel(x_axis_title)
-    ax.grid(linestyle="-")
+    ax.grid(which='major', linestyle="-")
+    ax.grid(which='minor', linestyle='--')
+    plt.minorticks_on()
+
     ax.set_xlim(left=x_axis[0], right=x_axis[len(x_axis)-1])
+    ax.set_ylim(bottom=0)
     fig.tight_layout()   
     try:
         os.makedirs("plots/"+out_folder_name)

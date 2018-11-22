@@ -1,13 +1,14 @@
 file_name='simple'
 
-loads='70'
+loads='1 5 10 15 20 25 30 35 40 45 50 70'
 nums_flows='1'
-workload_types='1'
-DCTCP='1'
+workload_types='3'
+DCTCP='0'
 link_speed='1000'
-PQ_on='1'
-PQ_rate='0.85'
-PQ_thresh='700.0'
+PQ_on='0'
+PQ_rate='0.90'
+PQ_thresh='900.0'
+q_size='50'
 
 y_axis1=$nums_flows
 y_axis1_name=num_flows
@@ -28,4 +29,4 @@ x_axis_name=Server_Load
 #order: num_flows->server_load->workload_type->DCTCP_K->link_speed
 #args 0 and 1 are always the same. The rest should respect the order.. this is bad..
 
-sim_cmnd="ns simulation.tcl $tmp_path $x $y1 $x $y2 $y3 $link_speed $y4 $y5 $y6"
+sim_cmnd="ns simulation.tcl $tmp_path $x $y1 $x $y2 $y3 $link_speed $y4 $y5 $y6 $q_size"

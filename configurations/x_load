@@ -1,7 +1,7 @@
 file_name='x_load'
 
 loads='20 40 60 80 100'
-nums_flows='10 15'
+nums_flows='15'
 workload_types='1'
 DCTCP='0 30'
 link_speed='1000'

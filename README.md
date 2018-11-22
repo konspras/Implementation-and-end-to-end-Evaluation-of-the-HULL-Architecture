@@ -1,5 +1,5 @@
 # Semester Project
-
+ (obsolete)
 The general flow in order to obtain latency (for now) plots is:
 
 ### 1) Create a configuration file in configurations/

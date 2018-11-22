@@ -1,6 +1,4 @@
-#package require csv
-
-#cmd args order: num_flows, server_load
+source "util.tcl"
 
 set result_path [lindex $argv 0]
 # used to identify the output files
@@ -23,7 +21,6 @@ set link_latency 0.05ms
 # DCTCP
 #set DCTCP_K  20
 set DCTCP_g  [expr 1.0/16.0]
-set ackRatio 1
 
 #puts "$result_path, $file_ident, $num_flows, $server_load, $workload_type \
         $DCTCP, $link_speed"
@@ -32,7 +29,15 @@ Queue set limit_ $queue_size
 Queue/DropTail set drop_prio_ false
 Queue/DropTail set deque_prio_ false
 
-Queue/RED set setbit_ true
+# Only let DCTCP handle ecn when there are no PQs (as in "Less is More")
+if {$has_PQ == 0} {
+    Queue/RED set setbit_ true
+} else {
+    Queue/RED set setbit_ false
+}
+# Queue/RED set bytes_ false
+# Queue/RED set queue_in_bytes_ true
+# Queue/RED set mean_pktsize_ $pktSize
 Queue/RED set gentle_ false
 Queue/RED set q_weight_ 1.0
 Queue/RED set mark_p_ 1.0
@@ -74,68 +79,6 @@ set exp_distr_mean [expr [expr 1.0/[expr $server_load/100.0]] \
 set simulation_duration 100
 set traffic_start_time 1.0
 
-proc dispRes {} {
-    global tcp num_flows server_load workload_type sendTimesList receiveTimesList \
-            DCTCP
-    
-    for {set i 0} {$i < $num_flows} {incr i} {
-        #puts "num_flows: $num_flows, server_load: $server_load, workload_type: \
-                $workload_type, DCTCP: $DCTCP"
-        set numPktsSent [$tcp($i) set ndatapack_]
-        set numBytesSent [$tcp($i) set ndatabytes_]
-        set numAcksRec [$tcp($i) set nackpack_]
-        set numRexMit [$tcp($i) set nrexmit_]
-        set numPktsRetr [$tcp($i) set nrexmitpack_]
-        set numEcnAffected [$tcp($i) set necnresponses_]
-        set numTimesCwdReduce [$tcp($i) set ncwndcuts_]
-        set numTimesCwdRedCong [$tcp($i) set ncwndcuts1_]
-        puts "============================================="
-        puts "Packets sent by $i: $numPktsSent"
-        puts "Packets retransmitted by $i: $numPktsRetr"
-        puts "Acks received by $i: $numAcksRec"
-        puts "Num of retr timeouts when there was data outstanding at $i: $numRexMit"
-        puts "Times cwnd was reduced bcs of ecn at $i: $numEcnAffected"
-        puts "Times cwnd was reduced at $i: $numTimesCwdReduce"
-        puts "Times cwnd was reduced bcs of cong at $i: $numTimesCwdRedCong"
-        #puts "send list: $sendTimesList"
-        #puts "rcv list: $receiveTimesList"
-    }
-
-}
-
-proc saveToFile {} {
-    global result_path file_ident sendTimesList receiveTimesList num_flows
-        
-    #puts "sendTimesList $sendTimesList"
-    #puts "receiveTimesList $receiveTimesList"
-    set sfp [open "$result_path/send_times$file_ident.csv" w+]
-    set rfp [open "$result_path/rec_times$file_ident.csv" w+]
-    set num_iter [llength [lindex $sendTimesList 0]]
-    for {set i 1} {$i < $num_iter} {incr i} {
-        for {set j 0} {$j < $num_flows} {incr j} {
-            puts -nonewline $sfp [lindex [lindex $sendTimesList $j] $i]
-            puts -nonewline $sfp ","
-            puts -nonewline $rfp [lindex [lindex $receiveTimesList $j] $i]
-            puts -nonewline $rfp ","
-        }
-        puts -nonewline $sfp "\n"
-        puts -nonewline $rfp "\n"
-    } 
-}
-
-#Define a 'finish' procedure
-proc finish {} {
-    global ns nf tf
-    dispRes
-    saveToFile
-    $ns flush-trace
-    #Close the NAM trace file
-    #close $nf
-    close $tf
-    #Execute NAM on the trace file
-    #exec nam out.nam &
-    exit 0
-}
 
 set ns [new Simulator]
 
@@ -152,62 +95,80 @@ for {set i 0} {$i < $num_flows} {incr i} {
     set s($i) [$ns node]
 }
 
-#Connect Nodes
 if {$DCTCP != 0} {
-    #$ns duplex-link $switch_node $client_node $link_speed $link_latency RED
-    $ns simplex-link $switch_node $client_node $link_speed $link_latency RED
-    if {$has_PQ} {
-        $ns simplex-link-op $switch_node $client_node phantomQueue $PQ_rate $PQ_thresh
-    }
-    $ns simplex-link $client_node $switch_node $link_speed $link_latency RED
-    for {set i 0} {$i < $num_flows} {incr i} {
-        #$ns duplex-link $s($i) $switch_node $link_speed $link_latency RED
-        $ns simplex-link $s($i) $switch_node $link_speed $link_latency RED
-        $ns simplex-link $switch_node $s($i) $link_speed $link_latency RED
-        if {$has_PQ} {
-            $ns simplex-link-op $switch_node $s($i) phantomQueue $PQ_rate $PQ_thresh
-        }
-    }
+    set queue_type RED
 } else {
-    #$ns duplex-link $switch_node $client_node $link_speed $link_latency DropTail
-    $ns simplex-link $switch_node $client_node $link_speed $link_latency DropTail
-    if {$has_PQ} {
-        $ns simplex-link-op $switch_node $client_node phantomQueue $PQ_rate $PQ_thresh
-    }
-    $ns simplex-link $client_node $switch_node $link_speed $link_latency DropTail
-    for {set i 0} {$i < $num_flows} {incr i} {
-        #$ns duplex-link $s($i) $switch_node $link_speed $link_latency DropTail
-        $ns simplex-link $s($i) $switch_node $link_speed $link_latency DropTail
-        $ns simplex-link $switch_node $s($i) $link_speed $link_latency DropTail
-        if {$has_PQ} {
-            $ns simplex-link-op $switch_node $s($i) phantomQueue $PQ_rate $PQ_thresh
-        }
-    }
-
+    set queue_type DropTail
 }
-#$ns simplex-link-op $switch_node $client_node dynamic
-#$ns simplex-link-op $switch_node $client_node phantomQueue
+#Connect Nodes
+$ns simplex-link $switch_node $client_node $link_speed $link_latency $queue_type
+$ns simplex-link $client_node $switch_node $link_speed $link_latency $queue_type
+if {$has_PQ} {
+    $ns simplex-link-op $switch_node $client_node phantomQueue $PQ_rate $PQ_thresh
+}
+for {set i 0} {$i < $num_flows} {incr i} {
+    $ns simplex-link $s($i) $switch_node $link_speed $link_latency $queue_type
+    $ns simplex-link $switch_node $s($i) $link_speed $link_latency $queue_type
+    if {$has_PQ} {
+        $ns simplex-link-op $switch_node $s($i) phantomQueue $PQ_rate $PQ_thresh
+    }
+}
+
+
 
 #Monitor the queue for link (s1-h3). (for NAM)
 #$ns duplex-link-op $switch_node $dst_node queuePos 0.5
 
-if {$DCTCP != 0} {
-    Agent/TCP set ecn_ 1
-    Agent/TCP set old_ecn_ 1
-    Agent/TCP/FullTcp set spa_thresh_ 0
-    Agent/TCP set slow_start_restart_ true
-    Agent/TCP set windowOption_ 0
-    Agent/TCP set tcpTick_ 0.000001
-#    Agent/TCP set minrto_ $min_rto
-#    Agent/TCP set maxrto_ 2
-    
-    Agent/TCP/FullTcp set nodelay_ true; # disable Nagle
-    Agent/TCP/FullTcp set segsperack_ $ackRatio;
-    Agent/TCP/FullTcp set interval_ 0.000006
+# These vars don't seem to exist anywhere...
+# if {[string compare $sourceAlg "DC-TCP-Sack"] == 0} {
+#     Agent/TCP set dctcp_ true
+#     Agent/TCP set dctcp_g_ $DCTCP_g_;
+# }
 
+# CONFIG : https://github.com/camsas/qjump-ns2/blob/master/qjump.tcl
+# def is 1000
+#Agent/TCP set packetSize_ $packetSize
+# def is 536 - example uses 1460.. but the PQ threshold!
+#Agent/TCP/FullTcp set segsize_ $packetSize
+# default is 20! ex is at 1256, repr is at infin. was not using this until 18/11
+Agent/TCP set window_ 1256
+# boolean: re-init cwnd after connection goes idle.  On by default. 
+# used true from reproduc until 18/11. Setting to false bcs of example
+Agent/TCP set slow_start_restart_ false
+# def is 1. Not clear what it is. dctcp example has it at 0
+Agent/TCP set windowOption_ 0
+# probly smthing to do with simulation sampling. extreme (0.000001 <- dctcp
+# reproductions study (was using until 19/11)) - 0.01 is default and also used in example. 
+Agent/TCP set tcpTick_ 0.000001
+# retransmission time out. default values are fine.
+#Agent/TCP set minrto_ $min_rto
+#Agent/TCP set maxrto_ 2
+
+# Don't know what this is. default is 0
+# "below do 1 seg per ack [0:disable]"
+Agent/TCP/FullTcp set spa_thresh_ 0
+# disable sender-side Nagle? def: false
+# https://www.lifewire.com/nagle-algorithm-for-tcp-network-communication-817932
+Agent/TCP/FullTcp set nodelay_ true; # disable Nagle
+# def is 1. "ACK frequency". (there is a segs_per_ack_ in .h)
+Agent/TCP/FullTcp set segsperack_ 1;
+# delayed ack (repr has it at 0.000006, ex has it at 0.04, def is 0.1)
+Agent/TCP/FullTcp set interval_ 0.000006
+
+if {$DCTCP != 0} {
+    # def is 0
+    Agent/TCP set ecn_ 1
+    # def is 0
+    Agent/TCP set old_ecn_ 1
+    
     Agent/TCP set ecnhat_ true
     Agent/TCPSink set ecnhat_ true
     Agent/TCP set ecnhat_g_ $DCTCP_g;
+}
+
+if {$has_PQ} {
+    Agent/TCP set ecn_ 1
+    Agent/TCP set old_ecn_ 1
 }
 
 #Set Agents. For each server, a FullTcp agent and a TcpApp Application are created.
@@ -242,8 +203,6 @@ set qmon_size [$ns monitor-queue $client_node $switch_node $qf_size 0.01]
 # - currently the same for each query id.
 set sendTimesList []
 set receiveTimesList []
-# The differences between request send and receive time
-set diffs []
 # For each server, the time until it is busy processing a query.
 set busy_until []
 
@@ -255,18 +214,17 @@ $send_interval set avg_ $exp_distr_mean
 $gamma_var set alpha_ 0.7
 $gamma_var set beta_ 20000
  
-# Initiate lists.. must find better way...
-proc initiate_lists {} {
-    global sendTimesList receiveTimesList diffs busy_until num_flows
+# Initialize lists.. must find better way...
+proc initialize_lists {} {
+    global sendTimesList receiveTimesList busy_until num_flows
     for {set i 0} {$i < $num_flows} {incr i} {
             lappend sendTimesList 0.0
             lappend receiveTimesList 0.0
-            lappend diffs 0.0
             lappend busy_until 0.0
     }
 }
 # Send requests for $simulation duration time
-initiate_lists
+initialize_lists
 set query_id 0
 set nextQueryTime [expr [$send_interval value] + $traffic_start_time]
 set traffic_end_time [expr $traffic_start_time + $traffic_duration]
@@ -278,8 +236,11 @@ while {$nextQueryTime < $traffic_end_time} {
                                 server-recv $req_size $i $query_id}"
         #Register sending time for the client apps
         set curSendList [lindex $sendTimesList $i]
-        set newSendList [lappend curSendList $nextQueryTime]
-        set sendTimesList [lreplace $sendTimesList $i $i $newSendList]
+        #set newSendList [lappend curSendList $nextQueryTime]
+        set sendTimesList [lreplace $sendTimesList $i $i [lappend curSendList $nextQueryTime]]
+        
+        # set sendTimesList [lreplace $sendTimesList $i $i \
+        #                      [lappend [lindex $sendTimesList $i] $nextQueryTime]]
     }
     set nextQueryTime [expr $nextQueryTime + [$send_interval value]]
     incr query_id
@@ -296,9 +257,13 @@ Application/TcpApp instproc client-recv { size connection_id query_id } {
 
         # Register response arrival time
         set curRecList [lindex $receiveTimesList $connection_id]
-        set newRecList [lappend curRecList [$ns now]]
+        #set newRecList [lappend curRecList [$ns now]]
         set receiveTimesList [lreplace $receiveTimesList $connection_id \
-                                        $connection_id $newRecList]
+                                        $connection_id [lappend curRecList [$ns now]]]
+        # set receiveTimesList [lreplace $receiveTimesList $connection_id $connection_id \
+        #                                  [lappend \
+        #                                  [lindex $receiveTimesList $connection_id] \
+        #                                  [$ns now]]]
         #puts "STATUS: cwnd: [$tcp($connection_id) set cwnd_]"
         #puts "================================================================"
 
