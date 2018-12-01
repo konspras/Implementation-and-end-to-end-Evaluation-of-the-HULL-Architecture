@@ -1,27 +1,27 @@
 file_name='simple'
 
-loads='1 5 10 15 20 25 30 35 40 45 50 70'
-nums_flows='1'
-workload_types='3'
-DCTCP='0'
-link_speed='1000'
-PQ_on='0'
+loads='20 80'
+nums_flows='10'
+workload_types='4'
+DCTCP='10'
+link_speed='100'
+PQ_on='0 1'
 PQ_rate='0.90'
-PQ_thresh='900.0'
+PQ_thresh='1000.0'
 q_size='50'
 
 y_axis1=$nums_flows
-y_axis1_name=num_flows
+y_axis1_name=flows
 y_axis2=$workload_types
-y_axis2_name=workload_type
+y_axis2_name=wrkld
 y_axis3=$DCTCP
 y_axis3_name=DCTCP_K
 y_axis4=$PQ_on
 y_axis4_name=has_PQ
 y_axis5=$PQ_rate
-y_axis5_name=PQ_rate
+y_axis5_name=PQrate
 y_axis6=$PQ_thresh
-y_axis6_name=PQ_thresh
+y_axis6_name=PQthresh
 
 x_axis=$loads
 x_axis_name=Server_Load

@@ -1,0 +1,32 @@
+file_name='x_numflows'
+
+loads='50'
+nums_flows='10'
+workload_types='1'
+DCTCP='0 10'
+link_speed='100'
+PQ_on='0 1'
+PQ_rate='0.9'
+PQ_thresh='1000.0'
+q_size='50'
+
+y_axis1=$loads
+y_axis1_name=Server_Load
+y_axis2=$workload_types
+y_axis2_name=wrkld
+y_axis3=$DCTCP
+y_axis3_name=DCTCP_K
+y_axis4=$PQ_on
+y_axis4_name=hasPQ
+y_axis5=$PQ_rate
+y_axis5_name=PQrate
+y_axis6=$PQ_thresh
+y_axis6_name=PQthresh
+
+x_axis=$nums_flows
+x_axis_name=Number_of_Flows
+
+#order: num_flows|server_load|workload_type|DCTCP_K|link_speed|has_PQ|PQ_rate|PQ_thresh
+#args 0 and 1 are always the same. The rest should respect the order.. this is bad..
+
+sim_cmnd="ns simulation.tcl $tmp_path $x $x $y1 $y2 $y3 $link_speed $y4 $y5 $y6 $q_size"

@@ -14,6 +14,7 @@ set has_PQ [lindex $argv 7]
 set PQ_rate [lindex $argv 8]
 set PQ_thresh [lindex $argv 9]
 set queue_size [lindex $argv 10]
+set has_pacer [lindex $argv 11]
 
 # in ms
 set link_latency 0.05ms
@@ -22,8 +23,7 @@ set link_latency 0.05ms
 #set DCTCP_K  20
 set DCTCP_g  [expr 1.0/16.0]
 
-#puts "$result_path, $file_ident, $num_flows, $server_load, $workload_type \
-        $DCTCP, $link_speed"
+# in packets
 Queue set limit_ $queue_size
 
 Queue/DropTail set drop_prio_ false
@@ -41,6 +41,7 @@ if {$has_PQ == 0} {
 Queue/RED set gentle_ false
 Queue/RED set q_weight_ 1.0
 Queue/RED set mark_p_ 1.0
+# in packets (def size is 500B)
 Queue/RED set thresh_ $DCTCP
 Queue/RED set maxthresh_ $DCTCP
 Queue/RED set drop_prio_ false
@@ -67,6 +68,11 @@ if {$workload_type == 0} {
     set resp_size 2800
     set mean_service_time_s 0.0001
     set traffic_duration 1.0
+} elseif {$workload_type == 4} {
+    set req_size 3500
+    set resp_size 2800
+    set mean_service_time_s 0.00253
+    set traffic_duration 10.0
 } else {
     set req_size 3500
     set resp_size 2800
@@ -78,6 +84,25 @@ set exp_distr_mean [expr [expr 1.0/[expr $server_load/100.0]] \
                         *$mean_service_time_s]
 set simulation_duration 100
 set traffic_start_time 1.0
+
+#Define a 'finish' procedure
+proc finish {} {
+    global ns nf tf qf tchan_ tcp num_flows sendTimesList receiveTimesList result_path \
+            file_ident DCTCP
+    dispRes $num_flows $sendTimesList $receiveTimesList
+    saveToFile $result_path $file_ident $sendTimesList $receiveTimesList $num_flows
+    $ns flush-trace
+    #Close the NAM trace file
+    #close $nf
+    close $tf
+    if {$DCTCP != 0} {
+        close $tchan_
+    }
+    close $qf
+    #Execute NAM on the trace file
+    #exec nam out.nam &
+    exit 0
+}
 
 
 set ns [new Simulator]
@@ -95,20 +120,25 @@ for {set i 0} {$i < $num_flows} {incr i} {
     set s($i) [$ns node]
 }
 
+set host_queue_type DropTail
 if {$DCTCP != 0} {
-    set queue_type RED
+    set sw_queue_type RED
 } else {
-    set queue_type DropTail
+    set sw_queue_type DropTail
 }
 #Connect Nodes
-$ns simplex-link $switch_node $client_node $link_speed $link_latency $queue_type
-$ns simplex-link $client_node $switch_node $link_speed $link_latency $queue_type
+$ns simplex-link $switch_node $client_node $link_speed $link_latency $sw_queue_type
+$ns simplex-link $client_node $switch_node $link_speed $link_latency $host_queue_type
+#probly in packets
+$ns queue-limit $client_node $switch_node 1000
 if {$has_PQ} {
     $ns simplex-link-op $switch_node $client_node phantomQueue $PQ_rate $PQ_thresh
 }
 for {set i 0} {$i < $num_flows} {incr i} {
-    $ns simplex-link $s($i) $switch_node $link_speed $link_latency $queue_type
-    $ns simplex-link $switch_node $s($i) $link_speed $link_latency $queue_type
+    $ns simplex-link $switch_node $s($i) $link_speed $link_latency $sw_queue_type
+    $ns simplex-link $s($i) $switch_node $link_speed $link_latency $host_queue_type
+    $ns queue-limit $s($i) $switch_node 1000
+
     if {$has_PQ} {
         $ns simplex-link-op $switch_node $s($i) phantomQueue $PQ_rate $PQ_thresh
     }
@@ -188,14 +218,31 @@ for {set i 0} {$i < $num_flows} {incr i} {
     set app_server($i) [new Application/TcpApp $sink($i)]
     #Connect them
     $app_client($i) connect $app_server($i)
+    # Pacer Configuration
+    if {$has_pacer} {
+        set pacer($i) [new HullPacer]
+        $pacer($i) set bucket_ 1024
+        $pacer($i) set rate_ 65.536k
+        $pacer($i) set qlen_  100
+
+        $ns attach-hullPacer-agent $client_node $tcp($i) $pacer($i)
+    }
 }
 
+
+
 # queue monitoring
-set qf_size [open "q_trace" w]
-set qmon_size [$ns monitor-queue $client_node $switch_node $qf_size 0.01]
-[$ns link $client_node $switch_node] queue-sample-timeout
+set qf [open "$result_path/q_mon_$file_ident" w]
+set qmon_size [$ns monitor-queue $switch_node $client_node $qf 0.01]
+[$ns link $switch_node $client_node] queue-sample-timeout
 
-
+if {$DCTCP != 0} {
+    set cl_sw_q [[$ns link $switch_node $client_node] queue]
+    set tchan_ [open "$result_path/trace_q_$file_ident" w]
+    $cl_sw_q trace curq_
+    #$cl_sw_q trace ave_
+    $cl_sw_q attach $tchan_
+}
 # Network Setup Complete - Proceed with sending queries ----------------------
 #-----------------------------------------------------------------------------
 
@@ -286,7 +333,7 @@ Application/TcpApp instproc server-recv { size connection_id query_id } {
                 set process_this_query_at $occupied_until
                 #puts "currently busy"
         }
-        if {$workload_type == 0 || $workload_type == 3} {
+        if {$workload_type == 0 || $workload_type == 3 || $workload_type == 4} {
             set query_proc_time $mean_service_time_s
         } elseif {$workload_type == 1 || $workload_type == 2} {
             set query_proc_time [expr [expr 180 * [$gamma_var value] + 10000.0]/1000000000.0]

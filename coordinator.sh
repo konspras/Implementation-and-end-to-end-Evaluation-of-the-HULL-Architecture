@@ -37,6 +37,7 @@ do
 						let num_of_paths++
 						for x in $x_axis
 						do
+							echo ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 							echo $x_axis_name: $x
 							# args are: 1)path to store results, 2)the x-axis parameter (to identify
 							# the output file), 3+) parameters
@@ -60,7 +61,7 @@ done
 # Args: 1: number of folders with data(num of paths), 2: the name of the config file
 # 3 to num_of_paths: paths, 
 # next: x-axis name, rest: the x axis values (also used to id csv files in the folders)
-echo Calling python script
+echo ============ Calling python script ============
 python3 parse_data.py $file_name $num_of_paths $result_paths $x_axis_name $x_axis 
 
 echo Simulations done

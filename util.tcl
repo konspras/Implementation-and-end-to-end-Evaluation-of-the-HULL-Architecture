@@ -1,5 +1,4 @@
-proc calculate_throuhput { flow_id bytes_sent bytes_retr } {
-    global tcp num_flows sendTimesList receiveTimesList
+proc calculate_throuhput { flow_id bytes_sent bytes_retr sendTimesList receiveTimesList } {
 
     set bytes_recvd [expr $bytes_sent - $bytes_retr]
     set start_time [lindex [lindex $sendTimesList $flow_id] 1]
@@ -16,13 +15,9 @@ proc calculate_throuhput { flow_id bytes_sent bytes_retr } {
 
 }
 
-proc dispRes {} {
-    global tcp num_flows server_load workload_type sendTimesList receiveTimesList \
-            DCTCP
-    
+proc dispRes { num_flows sendTimesList receiveTimesList } {  
+    global tcp
     for {set i 0} {$i < $num_flows} {incr i} {
-        #puts "num_flows: $num_flows, server_load: $server_load, workload_type: \
-                $workload_type, DCTCP: $DCTCP"
         set numPktsSent [$tcp($i) set ndatapack_]
         set numBytesSent [$tcp($i) set ndatabytes_]
         set numAcksRec [$tcp($i) set nackpack_]
@@ -32,8 +27,8 @@ proc dispRes {} {
         set numEcnAffected [$tcp($i) set necnresponses_]
         set numTimesCwdReduce [$tcp($i) set ncwndcuts_]
         set numTimesCwdRedCong [$tcp($i) set ncwndcuts1_]
-        calculate_throuhput $i $numBytesSent $numRexMitBytes
         puts "============================================="
+        calculate_throuhput $i $numBytesSent $numRexMitBytes $sendTimesList $receiveTimesList
         puts "Packets sent by $i: $numPktsSent"
         puts "Packets retransmitted by $i: $numPktsRetr"
         puts "Acks received by $i: $numAcksRec"
@@ -41,15 +36,11 @@ proc dispRes {} {
         puts "Times cwnd was reduced bcs of ecn at $i: $numEcnAffected"
         puts "Times cwnd was reduced at $i: $numTimesCwdReduce"
         puts "Times cwnd was reduced bcs of cong at $i: $numTimesCwdRedCong"
-        #puts "send list: $sendTimesList"
-        #puts "rcv list: $receiveTimesList"
     }
 
 }
 
-proc saveToFile {} {
-    global result_path file_ident sendTimesList receiveTimesList num_flows
-        
+proc saveToFile { result_path file_ident sendTimesList receiveTimesList num_flows } {        
     #puts "sendTimesList $sendTimesList"
     #puts "receiveTimesList $receiveTimesList"
     set sfp [open "$result_path/send_times$file_ident.csv" w+]
@@ -69,16 +60,3 @@ proc saveToFile {} {
 
 
 
-#Define a 'finish' procedure
-proc finish {} {
-    global ns nf tf
-    dispRes
-    saveToFile
-    $ns flush-trace
-    #Close the NAM trace file
-    #close $nf
-    close $tf
-    #Execute NAM on the trace file
-    #exec nam out.nam &
-    exit 0
-}
