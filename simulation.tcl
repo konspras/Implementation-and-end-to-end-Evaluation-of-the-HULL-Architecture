@@ -120,7 +120,7 @@ $ns trace-all $tf
 # set nf [open out.nam w]
 # $ns namtrace-all $nf
 
-#Nodes
+# Nodes ------------------------------------------------------------------------
 set switch_node [$ns node]
 set client_node [$ns node]
 for {set i 0} {$i < $num_flows} {incr i} {
@@ -171,7 +171,7 @@ for {set i 0} {$i < $num_flows} {incr i} {
     }
 }
 
-
+# Agents -----------------------------------------------------------------------
 
 #Monitor the queue for link (s1-h3). (for NAM)
 #$ns duplex-link-op $switch_node $dst_node queuePos 0.5
@@ -262,8 +262,8 @@ if {$DCTCP != 0} {
     #$cl_sw_q trace ave_
     $cl_sw_q attach $tchan_
 }
-# Network Setup Complete - Proceed with sending queries ----------------------
-#-----------------------------------------------------------------------------
+# Network Setup Complete - Proceed with sending queries --------------------------
+#---------------------------------------------------------------------------------
 
 # list of lists. Holds, for each server, the times a query was sent/received
 # - currently the same for each query id.
@@ -362,7 +362,7 @@ Application/TcpApp instproc server-recv { size connection_id query_id } {
         set busy_until [lreplace $busy_until $connection_id $connection_id \
                                 $query_done_at]
 
-        # Respond when the quety has been processed
+        # Respond when the query has been processed
         $ns at $query_done_at "$app_server($connection_id) send $resp_size \
                 {$app_client($connection_id) client-recv $resp_size $connection_id $query_id}"
         #puts "STATUS: cwnd: [$sink($connection_id) set cwnd_]"
@@ -372,7 +372,6 @@ Application/TcpApp instproc server-recv { size connection_id query_id } {
 }
 
 
-#$ns at 1.0 "$app_client(0) send 100 \bs"$app_server(0) app-recv 100\bs""
 
 $ns at $simulation_duration "finish"
 $ns run
