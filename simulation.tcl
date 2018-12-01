@@ -16,6 +16,13 @@ set PQ_thresh [lindex $argv 9]
 set queue_size [lindex $argv 10]
 set has_pacer [lindex $argv 11]
 
+# in bits
+set pacer_bucket_ 100000
+# not sure in what (bits/s)
+set pacer_rate 150000.0k
+# in pkts
+set pacer_qlen $queue_size
+
 # in ms
 set link_latency 0.05ms
 
@@ -126,14 +133,26 @@ if {$DCTCP != 0} {
 } else {
     set sw_queue_type DropTail
 }
-#Connect Nodes
+# Connect Nodes
+# CLIENT
 $ns simplex-link $switch_node $client_node $link_speed $link_latency $sw_queue_type
 $ns simplex-link $client_node $switch_node $link_speed $link_latency $host_queue_type
-#probly in packets
+# probly in packets
 $ns queue-limit $client_node $switch_node 1000
+
 if {$has_PQ} {
     $ns simplex-link-op $switch_node $client_node phantomQueue $PQ_rate $PQ_thresh
 }
+
+if {$has_pacer} {
+    set client_pacer [new HullPacer]
+    $client_pacer set bucket_ $pacer_bucket_
+    $client_pacer set rate_ $pacer_rate
+    $client_pacer set qlen_  $pacer_qlen
+    $ns simplex-link-op $client_node $switch_node insert-hullPacer $client_pacer
+}
+
+# SERVERS
 for {set i 0} {$i < $num_flows} {incr i} {
     $ns simplex-link $switch_node $s($i) $link_speed $link_latency $sw_queue_type
     $ns simplex-link $s($i) $switch_node $link_speed $link_latency $host_queue_type
@@ -141,6 +160,14 @@ for {set i 0} {$i < $num_flows} {incr i} {
 
     if {$has_PQ} {
         $ns simplex-link-op $switch_node $s($i) phantomQueue $PQ_rate $PQ_thresh
+    }
+
+    if {$has_pacer} {
+        set server_pacer($i) [new HullPacer]
+        $server_pacer($i) set bucket_ $pacer_bucket_
+        $server_pacer($i) set rate_ $pacer_rate
+        $server_pacer($i) set qlen_  $pacer_qlen
+        $ns simplex-link-op $s($i) $switch_node insert-hullPacer $server_pacer($i)
     }
 }
 
@@ -218,15 +245,7 @@ for {set i 0} {$i < $num_flows} {incr i} {
     set app_server($i) [new Application/TcpApp $sink($i)]
     #Connect them
     $app_client($i) connect $app_server($i)
-    # Pacer Configuration
-    if {$has_pacer} {
-        set pacer($i) [new HullPacer]
-        $pacer($i) set bucket_ 1024
-        $pacer($i) set rate_ 65.536k
-        $pacer($i) set qlen_  100
-
-        $ns attach-hullPacer-agent $client_node $tcp($i) $pacer($i)
-    }
+    
 }
 
 

@@ -157,7 +157,8 @@ def plot_mean_lat_vs_xaxis(shape, paths, x_axis, means, means_99, x_axis_title,
     plt.minorticks_on()
 
     ax.set_xlim(left=x_axis[0], right=x_axis[len(x_axis)-1])
-    ax.set_ylim(bottom=0)
+    if not log_y:
+        ax.set_ylim(bottom=0)
     fig.tight_layout()   
     try:
         os.makedirs("plots/"+out_folder_name)

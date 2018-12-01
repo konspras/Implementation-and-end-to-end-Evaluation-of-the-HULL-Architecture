@@ -13,41 +13,44 @@ source $config_file
 init_result_path="results/$file_name"
 result_paths=''
 num_of_paths=0
-for y6 in $y_axis6
+for y7 in $y_axis7
 do
-	echo $y_axis6_name $y6
-	for y5 in $y_axis5
+	for y6 in $y_axis6
 	do
-		echo $y_axis5_name $y5
-		for y4 in $y_axis4
+		echo $y_axis6_name $y6
+		for y5 in $y_axis5
 		do
-			echo $y_axis4_name $y4
-			for y3 in $y_axis3
+			echo $y_axis5_name $y5
+			for y4 in $y_axis4
 			do
-				echo $y_axis3_name $y3
-				for y2 in $y_axis2
+				echo $y_axis4_name $y4
+				for y3 in $y_axis3
 				do
-					echo $y_axis2_name: $y2
-					for y1 in $y_axis1
+					echo $y_axis3_name $y3
+					for y2 in $y_axis2
 					do
-						echo $y_axis1_name: $y1
-						tmp_path="$init_result_path/$y_axis6_name$y6|$y_axis5_name$y5|$y_axis4_name$y4|$y_axis3_name$y3|$y_axis2_name$y2|$y_axis1_name$y1"
-						mkdir -p $tmp_path
-						result_paths="$result_paths $tmp_path"
-						let num_of_paths++
-						for x in $x_axis
+						echo $y_axis2_name: $y2
+						for y1 in $y_axis1
 						do
-							echo ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-							echo $x_axis_name: $x
-							# args are: 1)path to store results, 2)the x-axis parameter (to identify
-							# the output file), 3+) parameters
-							if [ $run_simulations = 1 ]
-							then
-								#wthis is sketchy..
-								source $config_file
-								echo $sim_cmnd
-								$sim_cmnd
-							fi
+							echo $y_axis1_name: $y1
+							tmp_path="$init_result_path/$y_axis7_name$y7|$y_axis6_name$y6|$y_axis5_name$y5|$y_axis4_name$y4|$y_axis3_name$y3|$y_axis2_name$y2|$y_axis1_name$y1"
+							mkdir -p $tmp_path
+							result_paths="$result_paths $tmp_path"
+							let num_of_paths++
+							for x in $x_axis
+							do
+								echo ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+								echo $x_axis_name: $x
+								# args are: 1)path to store results, 2)the x-axis parameter (to identify
+								# the output file), 3+) parameters
+								if [ $run_simulations = 1 ]
+								then
+									#wthis is sketchy..
+									source $config_file
+									echo $sim_cmnd
+									$sim_cmnd
+								fi
+							done
 						done
 					done
 				done
