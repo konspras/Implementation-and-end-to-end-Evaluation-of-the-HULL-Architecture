@@ -1,16 +1,16 @@
 file_name='simple'
 
 # from 01 to 99
-loads='0119 0238'
+loads='0238'
 workload_types='01'
-nums_flows='10'
-DCTCP='0 10'
+nums_flows='1'
+DCTCP='10'
 link_speed='100'
-PQ_on='0'
+PQ_on='1'
 PQ_rate='0.90'
 PQ_thresh='1000.0'
 q_size='50'
-pacer_on='0'
+pacer_on='0 1'
 
 y_axis1=$nums_flows
 y_axis1_name=flows

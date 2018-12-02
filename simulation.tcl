@@ -17,9 +17,10 @@ set queue_size [lindex $argv 10]
 set has_pacer [lindex $argv 11]
 
 # in bits
-set pacer_bucket_ 100000
+set pacer_bucket_ 1024
 # not sure in what (bits/s)
-set pacer_rate 150000.0k
+set pacer_rate 100.0M
+#set pacer_rate [expr $link_speed + 50 ]
 # in pkts
 set pacer_qlen $queue_size
 
@@ -62,12 +63,12 @@ for {set i 0} {$i < $num_workloads} {incr i} {
         set req_size($i) 100
         set resp_size($i) 100
         set mean_service_time_s($i) 0.0001
-        set traffic_duration($i) 10.0
+        set traffic_duration($i) 2.0
     } elseif {$wk_type($i) == 1} {
         set req_size($i) 3500
         set resp_size($i) 2800
         set mean_service_time_s($i) 0.00253
-        set traffic_duration($i) 10.0
+        set traffic_duration($i) 2.0
     } elseif {$wk_type($i) == 2} {
         set req_size($i) 100
         set resp_size($i) 100
@@ -92,6 +93,9 @@ for {set i 0} {$i < $num_workloads} {incr i} {
     set exp_distr_mean($i) [expr [expr 1.0/[expr $wk_server_load($i)/100.0]] \
                         *$mean_service_time_s($i)]
     set pace [expr  8 * $req_size($i) / $exp_distr_mean($i) / 1000000.0]
+    set pkts_per_req [expr ceil( $req_size($i) / 536.0 )]
+    set pkts_to_be_sent [expr 1 / $exp_distr_mean($i) * $traffic_duration($i) * $pkts_per_req]
+    puts "Packets expected to be sent by workload $wk_type($i) = $pkts_to_be_sent"
     puts "Mean pace of workload $wk_type($i) = $pace (Mbps)"
     puts "Mean total traffic of workload $wk_type($i) = [expr $num_flows*$pace] (Mbps)"
 
@@ -105,7 +109,7 @@ proc finish {} {
     global ns nf tf qf tchan_ tcp_ll num_flows sendTimesList receiveTimesList result_path \
             file_ident DCTCP num_workloads wk_type
     # TODO: Fix dispRes (tcp)
-    #dispRes $num_flows $sendTimesList $receiveTimesList
+    dispRes $num_flows $num_workloads $sendTimesList $receiveTimesList
     for {set wkld 0} {$wkld < $num_workloads} {incr wkld} {
         set send_lst [lindex $sendTimesList $wkld]
         set recv_lst [lindex $receiveTimesList $wkld]

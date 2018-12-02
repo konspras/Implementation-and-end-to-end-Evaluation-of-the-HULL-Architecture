@@ -1,14 +1,16 @@
 file_name='x_numflows'
 
-loads='50'
-nums_flows='10'
-workload_types='1'
+# from 01 to 99
+loads='0327'
+nums_flows='7 12'
+workload_types='01'
 DCTCP='0 10'
 link_speed='100'
 PQ_on='0 1'
 PQ_rate='0.9'
 PQ_thresh='1000.0'
 q_size='50'
+pacer_on='0'
 
 y_axis1=$loads
 y_axis1_name=Server_Load
@@ -22,11 +24,16 @@ y_axis5=$PQ_rate
 y_axis5_name=PQrate
 y_axis6=$PQ_thresh
 y_axis6_name=PQthresh
+y_axis7=$pacer_on
+y_axis7_name=has_pacer
 
 x_axis=$nums_flows
 x_axis_name=Number_of_Flows
 
-#order: num_flows|server_load|workload_type|DCTCP_K|link_speed|has_PQ|PQ_rate|PQ_thresh
-#args 0 and 1 are always the same. The rest should respect the order.. this is bad..
+#order: num_flows|server_load|workload_type|DCTCP_K|link_speed|has_PQ|PQ_rate|PQ_thresh|has_pacer
+#args 0 and 1 are always the same. The rest should respect the order...
 
-sim_cmnd="ns simulation.tcl $tmp_path $x $x $y1 $y2 $y3 $link_speed $y4 $y5 $y6 $q_size"
+sim_cmnd="ns simulation.tcl $tmp_path $x $x $y1 $y2 $y3 $link_speed $y4 $y5 $y6 $q_size $y7"
+
+wk_matches_ld=1
+if [ ${#y1} = $(( 2 * ${#y2})) ]; then wk_matches_ld=1; else wk_matches_ld=0; fi
