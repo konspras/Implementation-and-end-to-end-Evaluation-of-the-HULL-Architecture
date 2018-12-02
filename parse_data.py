@@ -16,25 +16,48 @@ def main():
     paths = sys.argv[3:3+number_of_paths]
     x_axis_title = sys.argv[3+number_of_paths] 
     x_axis = sys.argv[4+number_of_paths:]
+    # print(out_folder_name)
+    # print(number_of_paths)
+    # print(paths)
+    # print(x_axis_title)
+    # print(x_axis)
+    final_paths = []
+    final_file_ids = []
+    for path in paths:
+        wk_indx = path.find("wrkld")
+        workload = path[wk_indx+len("wrkld"):].split("|")[0]
+        for char in workload:
+            final_paths.append(path)
+            final_file_ids.append(char)
 
+    #print("------")
+    #print(final_paths)
+    #print(final_file_ids)
+    
     # Rows: number of different variables to be plotted
     # Cols: number of x_axis parameter values 
-    shape = (len(paths), len(x_axis))
+    shape = (len(final_paths), len(x_axis))
+    # print(shape)
+
     # Initialize data sequences
     max_latency_per_query = [[None for col in range(0,shape[1])] 
                             for row in range(0,shape[0])]
     means = np.ndarray(shape=shape)
     means_99 = np.ndarray(shape=shape)
 
-    for path_num, path in enumerate(paths):
-        queue_data_list, queue_trace_list = load_files(path_num, path, x_axis, max_latency_per_query, means, means_99)
+
+
+    for path_num, path in enumerate(final_paths):
+        queue_data_list, queue_trace_list = load_files(path_num, path, 
+            final_file_ids[path_num], x_axis, max_latency_per_query, means, means_99)
         plot_queue_size(queue_data_list, path, x_axis, out_folder_name)
         plot_queue_trace(queue_trace_list, path, x_axis, out_folder_name)
     #Create mean_latency - x_axis graph
-    plot_mean_lat_vs_xaxis(shape, paths, x_axis, means, means_99, x_axis_title,
-                            out_folder_name, log_y=False)
-    plot_mean_lat_vs_xaxis(shape, paths, x_axis, means, means_99, x_axis_title,
-                            out_folder_name, log_y=True)
+    # print(means)
+    plot_mean_lat_vs_xaxis(shape, final_paths, final_file_ids, x_axis, means,
+            means_99, x_axis_title, out_folder_name, log_y=False, plot_mean=True, plot_99=False)
+    plot_mean_lat_vs_xaxis(shape, final_paths, final_file_ids, x_axis, means,
+            means_99, x_axis_title, out_folder_name, log_y=True, plot_mean=True, plot_99=False)
 
 
     # Create latency vs time graph
@@ -87,7 +110,7 @@ def plot_queue_size(list_of_data, path, x_axis, out_folder_name):
         fig.savefig(storage_folder+"/Q_size vs Time_"+str(x_axis[i])+".png", format="png")
 
         avg_q_occup = np.mean(q_size_B)
-        print("Mon_mean: " + str(avg_q_occup) + "  " + path + " x: " + str(x_axis[i]))
+        #print("Mon_mean: " + str(avg_q_occup) + "  " + path + " x: " + str(x_axis[i]))
 
 
 
@@ -126,26 +149,30 @@ def plot_queue_trace(list_of_data, path, x_axis, out_folder_name):
 
         fig.savefig(storage_folder+"/Q_TRACE vs Time_"+str(x_axis[i])+".png", format="png")
         avg_q_occup = np.mean(q_size_B)
-        print("TR_mean: " + str(avg_q_occup) + "  " + path + " x: " +str(x_axis[i]))
-        print("----------")
+        #print("TR_mean: " + str(avg_q_occup) + "  " + path + " x: " +str(x_axis[i]))
+        #print("----------")
 
 
-def plot_mean_lat_vs_xaxis(shape, paths, x_axis, means, means_99, x_axis_title,
-                            out_folder_name, log_y=False):
+def plot_mean_lat_vs_xaxis(shape, paths, final_file_ids, x_axis, means, means_99, x_axis_title,
+                            out_folder_name, log_y=False, plot_mean=True, plot_99=True):
     #Create mean_latency - x_axis graph
     markers = ["o","v","1","s","p","P","*","x"]
     fig, ax = plt.subplots(nrows=1, ncols=1, figsize=(20,10))
     for i in range(shape[0]):
-        label = paths[i].split("/")[-1]
+        label = paths[i].split("/")[-1] + " Workload:" + final_file_ids[i]
         if log_y:
-            ax.semilogy(x_axis, means[i]*1000.0, label="mean "+label, 
+            if plot_mean:
+                ax.semilogy(x_axis, means[i]*1000.0, label="mean "+label, 
                         marker=markers[i%len(markers)]) 
-            ax.semilogy(x_axis, means_99[i]*1000.0, ':', label="99th% "+label, 
+            if plot_99:
+                ax.semilogy(x_axis, means_99[i]*1000.0, ':', label="99th% "+label, 
                         marker=markers[i%len(markers)])         
         else:
-            ax.plot(x_axis, means[i]*1000.0, label="mean "+label, 
+            if plot_mean:
+                ax.plot(x_axis, means[i]*1000.0, label="mean "+label, 
                         marker=markers[i%len(markers)]) 
-            ax.plot(x_axis, means_99[i]*1000.0, ':', label="99th% "+label, 
+            if plot_99:
+                ax.plot(x_axis, means_99[i]*1000.0, ':', label="99th% "+label, 
                         marker=markers[i%len(markers)])     
     
     ax.set_title("Average Latency vs " + x_axis_title)
@@ -172,13 +199,14 @@ def plot_mean_lat_vs_xaxis(shape, paths, x_axis, means, means_99, x_axis_title,
 
 
 
-def load_files(file_num, path, x_axis, max_latency_per_query, means, means_99):
+def load_files(file_num, path, file_id, x_axis, max_latency_per_query, means, means_99):
     q_size_data_list = []
     q_size_data_trace_list = []
     for i, x_val in enumerate(x_axis):
-
-        tmp_send_times = np.genfromtxt(path+"/send_times"+str(x_val)+".csv", delimiter=",")
-        tmp_receive_times = np.genfromtxt(path+"/rec_times"+str(x_val)+".csv", delimiter=",")
+        snd_file_path = path+"/send_timesload"+str(x_val)+"|wkld"+str(file_id)+".csv"
+        rec_file_path = path+"/rec_timesload"+str(x_val)+"|wkld"+str(file_id)+".csv"
+        tmp_send_times = np.genfromtxt(snd_file_path, delimiter=",")
+        tmp_receive_times = np.genfromtxt(rec_file_path, delimiter=",")
         tmp_q = np.genfromtxt(path+"/q_mon_"+str(x_val), delimiter=" ")
         if "DCTCP_K0" not in path:
             tmp_q_trace = np.genfromtxt(path+"/trace_q_"+str(x_val), delimiter=" ",

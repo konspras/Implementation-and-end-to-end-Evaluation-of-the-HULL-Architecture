@@ -1,15 +1,16 @@
 file_name='simple'
 
-loads='5 15'
-nums_flows='1'
-workload_types='1'
-DCTCP='10'
+# from 01 to 99
+loads='0119 0238'
+workload_types='01'
+nums_flows='10'
+DCTCP='0 10'
 link_speed='100'
 PQ_on='0'
 PQ_rate='0.90'
 PQ_thresh='1000.0'
 q_size='50'
-pacer_on='0 1'
+pacer_on='0'
 
 y_axis1=$nums_flows
 y_axis1_name=flows
@@ -34,3 +35,5 @@ x_axis_name=Server_Load
 # args 0 and 1 are always the same. The rest should respect the order...
 
 sim_cmnd="ns simulation.tcl $tmp_path $x $y1 $x $y2 $y3 $link_speed $y4 $y5 $y6 $q_size $y7"
+wk_matches_ld=1
+if [ ${#x} = $(( 2 * ${#y2})) ]; then wk_matches_ld=1; else wk_matches_ld=0; fi

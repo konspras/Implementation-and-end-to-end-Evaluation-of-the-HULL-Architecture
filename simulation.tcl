@@ -54,50 +54,63 @@ Queue/RED set maxthresh_ $DCTCP
 Queue/RED set drop_prio_ false
 Queue/RED set deque_prio_ false
 
+set num_workloads [string length $workload_type]
+for {set i 0} {$i < $num_workloads} {incr i} {
+    set wk_type($i) [string index $workload_type $i]
+    set wk_server_load($i) [string range $server_load [expr 2 * $i] [expr 2 * $i + 1]]
+    if {$wk_type($i) == 0} {
+        set req_size($i) 100
+        set resp_size($i) 100
+        set mean_service_time_s($i) 0.0001
+        set traffic_duration($i) 10.0
+    } elseif {$wk_type($i) == 1} {
+        set req_size($i) 3500
+        set resp_size($i) 2800
+        set mean_service_time_s($i) 0.00253
+        set traffic_duration($i) 10.0
+    } elseif {$wk_type($i) == 2} {
+        set req_size($i) 100
+        set resp_size($i) 100
+        set mean_service_time_s($i) 0.00253
+        set traffic_duration($i) 10.0
+    } elseif {$wk_type($i) == 3} {
+        set req_size($i) 3500
+        set resp_size($i) 2800
+        set mean_service_time_s($i) 0.0001
+        set traffic_duration($i) 10.0
+    } elseif {$wk_type($i) == 4} {
+        set req_size($i) 3500
+        set resp_size($i) 2800
+        set mean_service_time_s($i) 0.00253
+        set traffic_duration($i) 10.0
+    } else {
+        set req_size($i) 3500
+        set resp_size($i) 2800
+        set mean_service_time_s($i) 0.00253
+        set traffic_duration($i) 10.0
+    }
+    set exp_distr_mean($i) [expr [expr 1.0/[expr $wk_server_load($i)/100.0]] \
+                        *$mean_service_time_s($i)]
+    set pace [expr  8 * $req_size($i) / $exp_distr_mean($i) / 1000000.0]
+    puts "Mean pace of workload $wk_type($i) = $pace (Mbps)"
+    puts "Mean total traffic of workload $wk_type($i) = [expr $num_flows*$pace] (Mbps)"
 
-if {$workload_type == 0} {
-    set req_size 100
-    set resp_size 100
-    set mean_service_time_s 0.0001
-    set traffic_duration 1.0
-} elseif {$workload_type == 1} {
-    set req_size 3500
-    set resp_size 2800
-    set mean_service_time_s 0.00253
-    set traffic_duration 10.0
-} elseif {$workload_type == 2} {
-    set req_size 100
-    set resp_size 100
-    set mean_service_time_s 0.00253
-    set traffic_duration 10.0
-} elseif {$workload_type == 3} {
-    set req_size 3500
-    set resp_size 2800
-    set mean_service_time_s 0.0001
-    set traffic_duration 1.0
-} elseif {$workload_type == 4} {
-    set req_size 3500
-    set resp_size 2800
-    set mean_service_time_s 0.00253
-    set traffic_duration 10.0
-} else {
-    set req_size 3500
-    set resp_size 2800
-    set mean_service_time_s 0.00253
-    set traffic_duration 10.0
 }
 
-set exp_distr_mean [expr [expr 1.0/[expr $server_load/100.0]] \
-                        *$mean_service_time_s]
 set simulation_duration 100
 set traffic_start_time 1.0
 
 #Define a 'finish' procedure
 proc finish {} {
-    global ns nf tf qf tchan_ tcp num_flows sendTimesList receiveTimesList result_path \
-            file_ident DCTCP
-    dispRes $num_flows $sendTimesList $receiveTimesList
-    saveToFile $result_path $file_ident $sendTimesList $receiveTimesList $num_flows
+    global ns nf tf qf tchan_ tcp_ll num_flows sendTimesList receiveTimesList result_path \
+            file_ident DCTCP num_workloads wk_type
+    # TODO: Fix dispRes (tcp)
+    #dispRes $num_flows $sendTimesList $receiveTimesList
+    for {set wkld 0} {$wkld < $num_workloads} {incr wkld} {
+        set send_lst [lindex $sendTimesList $wkld]
+        set recv_lst [lindex $receiveTimesList $wkld]
+        saveToFile $result_path "load$file_ident|wkld$wk_type($wkld)" $send_lst $recv_lst $num_flows
+    }
     $ns flush-trace
     #Close the NAM trace file
     #close $nf
@@ -228,28 +241,79 @@ if {$has_PQ} {
     Agent/TCP set old_ecn_ 1
 }
 
-#Set Agents. For each server, a FullTcp agent and a TcpApp Application are created.
-for {set i 0} {$i < $num_flows} {incr i} {
-    set tcp($i) [new Agent/TCP/FullTcp]
-    set sink($i) [new Agent/TCP/FullTcp]
-    $ns attach-agent $client_node $tcp($i)
-    $ns attach-agent $s($i) $sink($i)
-    $tcp($i) set fid_ [expr $i]
-    $sink($i) set fid_ [expr $i]
-    $ns connect $tcp($i) $sink($i)
-    $sink($i) listen
+# Set Agents. One flow per application per server. List of lists (ll). frst define
+# workload indx and then flow
+#       flow
+# wkld|   |   | ...
+#     |   |   | ...
+#       ...
 
-    #Set client application
-    set app_client($i) [new Application/TcpApp $tcp($i)]
-    #Set server application
-    set app_server($i) [new Application/TcpApp $sink($i)]
-    #Connect them
-    $app_client($i) connect $app_server($i)
-    
+set flow_id 0
+set tcp_ll {}
+set sink_ll {}
+set app_client_ll {}
+set app_server_ll {}
+for {set wkld 0} {$wkld < $num_workloads} {incr wkld} {
+    for {set i 0} {$i < $num_flows} {incr i} {
+        # .... 
+        if {$wkld > 0} {
+            set cur_tcp_lst [lindex $tcp_ll $i]
+            set tcp_ll [lreplace $tcp_ll $i $i [lappend cur_tcp_lst [new Agent/TCP/FullTcp]]]
+        } else {
+            lappend tcp_ll [new Agent/TCP/FullTcp]
+        }
+        
+        #set tcp($i) [new Agent/TCP/FullTcp]
+        if {$wkld > 0} {
+            set cur_sink_lst [lindex $sink_ll $i]
+            set sink_ll [lreplace $sink_ll $i $i [lappend cur_sink_lst [new Agent/TCP/FullTcp]]]
+        } else {
+            lappend sink_ll [new Agent/TCP/FullTcp]
+        }
+        
+        #set sink($i) [new Agent/TCP/FullTcp]
+        $ns attach-agent $client_node [lindex [lindex $tcp_ll $i] $wkld]
+        #$ns attach-agent $client_node $tcp($i)
+        $ns attach-agent $s($i) [lindex [lindex $sink_ll $i] $wkld]
+        #$ns attach-agent $s($i) $sink($i)
+        [lindex [lindex $tcp_ll $i] $wkld] set fid_ $flow_id
+        #$tcp($i) set fid_ [expr $i]
+        [lindex [lindex $sink_ll $i] $wkld] set fid_ $flow_id
+        #$sink($i) set fid_ [expr $i]
+        incr flow_id
+        $ns connect [lindex [lindex $tcp_ll $i] $wkld] [lindex [lindex $sink_ll $i] $wkld]
+        #$ns connect $tcp($i) $sink($i)
+        [lindex [lindex $sink_ll $i] $wkld] listen
+        #$sink($i) listen
+
+        # Set client application
+        if {$wkld > 0} {
+            set cur_cl_app_lst [lindex $app_client_ll $i]
+            set app_client_ll [lreplace $app_client_ll $i $i [lappend cur_cl_app_lst [new Application/TcpApp [lindex [lindex $tcp_ll $i] $wkld]]]]    
+        } else {
+            lappend app_client_ll [new Application/TcpApp [lindex [lindex $tcp_ll $i] $wkld]]
+        }
+        #set app_client($i) [new Application/TcpApp $tcp($i)]
+        # Set server application
+        if {$wkld > 0} {
+            set cur_sv_app_lst [lindex $app_server_ll $i]
+            set app_server_ll [lreplace $app_server_ll $i $i [lappend cur_sv_app_lst [new Application/TcpApp [lindex [lindex $sink_ll $i] $wkld]]]]    
+        } else {
+            lappend app_server_ll [new Application/TcpApp [lindex [lindex $sink_ll $i] $wkld]]
+        }
+        # set app_server($i) [new Application/TcpApp $sink($i)] 
+        # Connect them
+        [lindex [lindex $app_client_ll $i] $wkld] connect [lindex [lindex $app_server_ll $i] $wkld]
+        #$app_client($i) connect $app_server($i)
+        
+    }
 }
-
-
-
+# puts "number of wkl types = [array size wk_type]"
+# puts $flow_id
+# puts $tcp_ll 
+# puts $sink_ll 
+# puts $app_client_ll 
+# puts $app_server_ll 
 # queue monitoring
 set qf [open "$result_path/q_mon_$file_ident" w]
 set qmon_size [$ns monitor-queue $switch_node $client_node $qf 0.01]
@@ -265,85 +329,114 @@ if {$DCTCP != 0} {
 # Network Setup Complete - Proceed with sending queries --------------------------
 #---------------------------------------------------------------------------------
 
-# list of lists. Holds, for each server, the times a query was sent/received
-# - currently the same for each query id.
+
+# list of list of list. First indx is workload_type, 2nd indx is flow_id(server_id), 3d indx is time
+# Holds, for each server, the timestamps of query sending and receiving times
 set sendTimesList []
 set receiveTimesList []
 # For each server, the time until it is busy processing a query.
 set busy_until []
 
-set send_interval [new RandomVariable/Exponential]
-set gamma_var [new RandomVariable/Gamma]
-# Interval depends on desired load. For load 1, a query is sent at an interval
-# equal to the servers mean service time.
-$send_interval set avg_ $exp_distr_mean
-$gamma_var set alpha_ 0.7
-$gamma_var set beta_ 20000
+
  
 # Initialize lists.. must find better way...
 proc initialize_lists {} {
-    global sendTimesList receiveTimesList busy_until num_flows
-    for {set i 0} {$i < $num_flows} {incr i} {
-            lappend sendTimesList 0.0
-            lappend receiveTimesList 0.0
-            lappend busy_until 0.0
+    global sendTimesList receiveTimesList busy_until num_flows num_workloads
+    for {set wrkld 0} {$wrkld < $num_workloads} {incr wrkld} {
+        set tmp_send {}
+        set tmp_recv {}
+        for {set i 0} {$i < $num_flows} {incr i} {
+            lappend tmp_send 0.0
+            lappend tmp_recv 0.0
+            if {$wrkld == 0} {
+                lappend busy_until 0.0
+            }
+        }
+        lappend sendTimesList $tmp_send
+        lappend receiveTimesList $tmp_recv
     }
 }
-# Send requests for $simulation duration time
+
 initialize_lists
-set query_id 0
-set nextQueryTime [expr [$send_interval value] + $traffic_start_time]
-set traffic_end_time [expr $traffic_start_time + $traffic_duration]
-while {$nextQueryTime < $traffic_end_time} {
-    #puts "nextQueryTime is $nextQueryTime"
-    #puts "sendTimesList is: $sendTimesList"
-    for {set i 0} {$i < $num_flows} {incr i} {
-        $ns at $nextQueryTime "$app_client($i) send $req_size {$app_server($i) \
-                                server-recv $req_size $i $query_id}"
-        #Register sending time for the client apps
-        set curSendList [lindex $sendTimesList $i]
-        #set newSendList [lappend curSendList $nextQueryTime]
-        set sendTimesList [lreplace $sendTimesList $i $i [lappend curSendList $nextQueryTime]]
-        
-        # set sendTimesList [lreplace $sendTimesList $i $i \
-        #                      [lappend [lindex $sendTimesList $i] $nextQueryTime]]
+#puts $sendTimesList
+# 2 workloads 10 flows each
+# {0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0} {0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0} 
+#puts $receiveTimesList
+#puts $busy_until
+
+#loop over all workloads...
+for {set wkld 0} {$wkld < $num_workloads} {incr wkld} {
+    set send_interval [new RandomVariable/Exponential]
+    set gamma_var($wkld) [new RandomVariable/Gamma]
+    # Interval depends on desired load. For load 1, a query is sent at an interval
+    # equal to the servers mean service time.
+    $send_interval set avg_ $exp_distr_mean($wkld)
+    $gamma_var($wkld) set alpha_ 0.7
+    $gamma_var($wkld) set beta_ 20000
+
+    # Send requests for $simulation duration time
+    set query_id 0
+    set nextQueryTime [expr [$send_interval value] + $traffic_start_time]
+    set traffic_end_time [expr $traffic_start_time + $traffic_duration($wkld)]
+    while {$nextQueryTime < $traffic_end_time} {
+        #puts "nextQueryTime is $nextQueryTime"
+        #puts "sendTimesList is: $sendTimesList"
+        for {set i 0} {$i < $num_flows} {incr i} {
+            set cur_app_client [lindex [lindex $app_client_ll $i] $wkld]
+            set cur_app_server [lindex [lindex $app_server_ll $i] $wkld]
+            $ns at $nextQueryTime "$cur_app_client send $req_size($wkld) {$cur_app_server \
+                                    server-recv $req_size($wkld) $i $query_id $wk_type($wkld) $wkld}"
+            
+            #$ns at $nextQueryTime "$app_client($i) send $req_size {$app_server($i) \
+            #                        server-recv $req_size $i $query_id}"
+            #Register sending time for the client apps
+            set cur_wk_ll [lindex $sendTimesList $wkld]
+            set curSendList [lindex $cur_wk_ll $i]
+            #set newSendList [lappend curSendList $nextQueryTime]
+            set cur_wk_ll [lreplace $cur_wk_ll $i $i [lappend curSendList $nextQueryTime]]
+            set sendTimesList [lreplace $sendTimesList $wkld $wkld $cur_wk_ll]
+            #set sendTimesList [lreplace $sendTimesList $i $i [lappend curSendList $nextQueryTime]]
+            
+            # set sendTimesList [lreplace $sendTimesList $i $i \
+            #                      [lappend [lindex $sendTimesList $i] $nextQueryTime]]
+        }
+        set nextQueryTime [expr $nextQueryTime + [$send_interval value]]
+        incr query_id
     }
-    set nextQueryTime [expr $nextQueryTime + [$send_interval value]]
-    incr query_id
 }
 
+#puts $sendTimesList
 
-
-Application/TcpApp instproc client-recv { size connection_id query_id } {
+Application/TcpApp instproc client-recv { size server_id query_id wkld_indx} {
         global ns app_server app_client sendTimesList receiveTimesList send_interval \
                  tcp
-
         #puts "[$ns now] CLIENT received $size bytes response for query $query_id from server \
-                        $connection_id"
-
+                        $server_id"
         # Register response arrival time
-        set curRecList [lindex $receiveTimesList $connection_id]
+        set cur_wk_ll [lindex $receiveTimesList $wkld_indx]
+        set curRecList [lindex $cur_wk_ll $server_id]
         #set newRecList [lappend curRecList [$ns now]]
-        set receiveTimesList [lreplace $receiveTimesList $connection_id \
-                                        $connection_id [lappend curRecList [$ns now]]]
-        # set receiveTimesList [lreplace $receiveTimesList $connection_id $connection_id \
+        set cur_wk_ll [lreplace $cur_wk_ll $server_id $server_id [lappend curRecList [$ns now]]]
+        set receiveTimesList [lreplace $receiveTimesList $wkld_indx \
+                                        $wkld_indx $cur_wk_ll]
+        # set receiveTimesList [lreplace $receiveTimesList $server_id $server_id \
         #                                  [lappend \
-        #                                  [lindex $receiveTimesList $connection_id] \
+        #                                  [lindex $receiveTimesList $server_id] \
         #                                  [$ns now]]]
-        #puts "STATUS: cwnd: [$tcp($connection_id) set cwnd_]"
+        #puts "STATUS: cwnd: [$tcp($server_id) set cwnd_]"
         #puts "================================================================"
 
 }
 
-Application/TcpApp instproc server-recv { size connection_id query_id } {
+Application/TcpApp instproc server-recv { size server_id query_id wkld_id wkld_indx} {
         global ns app_server app_client sendTimesList receiveTimesList \
                  busy_until gamma_var resp_size sink workload_type \
-                 mean_service_time_s
+                 mean_service_time_s app_client_ll app_server_ll
 
-        #puts "[$ns now] SERVER $connection_id receives $size bytes query $query_id from client. \
-                        Server is busy until [lindex $busy_until $connection_id]"
+        #puts "[$ns now] SERVER $server_id receives $size bytes query $query_id from client. \
+                        Server is busy until [lindex $busy_until $server_id]"
         set cur_time [$ns now]
-        set occupied_until [lindex $busy_until $connection_id]
+        set occupied_until [lindex $busy_until $server_id]
         #mathfunc was added in tcl 8.5...
         if {$cur_time > $occupied_until} {
                 set process_this_query_at $cur_time
@@ -352,20 +445,22 @@ Application/TcpApp instproc server-recv { size connection_id query_id } {
                 set process_this_query_at $occupied_until
                 #puts "currently busy"
         }
-        if {$workload_type == 0 || $workload_type == 3 || $workload_type == 4} {
-            set query_proc_time $mean_service_time_s
-        } elseif {$workload_type == 1 || $workload_type == 2} {
-            set query_proc_time [expr [expr 180 * [$gamma_var value] + 10000.0]/1000000000.0]
+        if {$wkld_id == 0 || $wkld_id == 3 || $wkld_id == 4} {
+            set query_proc_time $mean_service_time_s($wkld_indx)
+        } elseif {$wkld_id == 1 || $wkld_id == 2} {
+            set query_proc_time [expr [expr 180 * [$gamma_var($wkld_indx) value] + 10000.0]/1000000000.0]
         }
         #puts "query_proc_time $query_proc_time"
         set query_done_at [expr $query_proc_time + $process_this_query_at]
-        set busy_until [lreplace $busy_until $connection_id $connection_id \
+        set busy_until [lreplace $busy_until $server_id $server_id \
                                 $query_done_at]
 
         # Respond when the query has been processed
-        $ns at $query_done_at "$app_server($connection_id) send $resp_size \
-                {$app_client($connection_id) client-recv $resp_size $connection_id $query_id}"
-        #puts "STATUS: cwnd: [$sink($connection_id) set cwnd_]"
+        set cur_app_client [lindex [lindex $app_client_ll $server_id] $wkld_indx]
+        set cur_app_server [lindex [lindex $app_server_ll $server_id] $wkld_indx]
+        $ns at $query_done_at "$cur_app_server send $resp_size($wkld_indx) \
+                {$cur_app_client client-recv $resp_size($wkld_indx) $server_id $query_id $wkld_indx}"
+        #puts "STATUS: cwnd: [$sink($server_id) set cwnd_]"
 
         #puts "------------------------------------------------------------------"
 

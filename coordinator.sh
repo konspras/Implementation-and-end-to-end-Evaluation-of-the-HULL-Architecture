@@ -15,6 +15,7 @@ result_paths=''
 num_of_paths=0
 for y7 in $y_axis7
 do
+	echo $y_axis7_name $y7
 	for y6 in $y_axis6
 	do
 		echo $y_axis6_name $y6
@@ -45,10 +46,17 @@ do
 								# the output file), 3+) parameters
 								if [ $run_simulations = 1 ]
 								then
-									#wthis is sketchy..
+									# this is sketchy..
 									source $config_file
 									echo $sim_cmnd
-									$sim_cmnd
+									echo match $wk_matches_ld
+									if [ $wk_matches_ld = 1 ]
+									then 
+										echo "workloads and loads match"
+										$sim_cmnd
+									else
+										echo "workloads and loads don't match"
+									fi
 								fi
 							done
 						done
@@ -67,4 +75,4 @@ done
 echo ============ Calling python script ============
 python3 parse_data.py $file_name $num_of_paths $result_paths $x_axis_name $x_axis 
 
-echo Simulations done
+echo Simulations Completed
