@@ -16,8 +16,8 @@ set PQ_thresh [lindex $argv 9]
 set queue_size [lindex $argv 10]
 set has_pacer [lindex $argv 11]
 
-# in bits
-set pacer_bucket_ 1024
+# in bits (as hw impl of HULL)
+set pacer_bucket_ 24000
 # not sure in what (bits/s)
 set pacer_rate 100.0M
 #set pacer_rate [expr $link_speed + 50 ]
