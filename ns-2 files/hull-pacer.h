@@ -56,25 +56,54 @@ protected:
 	HullPacer *hp_;
 };
 
+class Rate_Update_Timer : public TimerHandler {
+public:
+	Rate_Update_Timer(HullPacer *t) : TimerHandler() { hp_ = t;}
+	
+protected:
+	virtual void expire(Event *e);
+	HullPacer *hp_;
+};
+
+class Token_Update_Timer : public TimerHandler {
+public:
+	Token_Update_Timer(HullPacer *t) : TimerHandler() { hp_ = t;}
+	
+protected:
+	virtual void expire(Event *e);
+	HullPacer *hp_;
+};
+
 
 class HullPacer : public Connector {
 public:
 	HullPacer();
 	~HullPacer();
 	void timeout(int);
+	double getupdatedtokens();
+	double getupdatedrate();
 protected:
 	void recv(Packet *, Handler *);
-	double getupdatedtokens();
 	double tokens_; //acumulated tokens
 	double rate_; //token bucket rate
+	double eta_;
+	double beta_;
+	double bits_since_rt_upd_;
+	double q_length_bits_;
 	int bucket_; //bucket depth
 	int qlen_;
-	double lastupdatetime_;
+	//double lastupdatetime_;
+	double token_upd_interval_;
+	double rate_upd_interval_;
 	PacketQueue *q_;
 	HPTBF_Timer hptbf_timer_;
+	Rate_Update_Timer rate_timer_;
+	Token_Update_Timer token_timer_;
 	int init_;
-	// temporary and sketchy
+	// temporary and sketchy (because the handler is alw the same?)
 	Handler *h_;
+	int debug_cnt_;
+	int fast_debug_cnt_;
 };
 
 #endif

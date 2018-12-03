@@ -51,14 +51,28 @@
 #include "queue.h"
 #include "hull-pacer.h"
 
-HullPacer::HullPacer() :tokens_(0),hptbf_timer_(this), init_(1)
+HullPacer::HullPacer() :
+	tokens_(0),
+	eta_(0.125),
+	beta_(16),
+	bits_since_rt_upd_(0),
+	q_length_bits_(0),
+	token_upd_interval_(0.000016),
+	rate_upd_interval_(0.000064),
+	hptbf_timer_(this),
+	rate_timer_(this),
+	token_timer_(this),
+	init_(1),
+	debug_cnt_(0),
+	fast_debug_cnt_(0)
 {
-	q_=new PacketQueue();
+	q_ = new PacketQueue();
 	bind_bw("rate_",&rate_);
 	// Bucket is in bits
 	bind("bucket_",&bucket_);
 	// qlen is in packets
 	bind("qlen_",&qlen_);
+	
 }
 	
 HullPacer::~HullPacer()
@@ -66,6 +80,8 @@ HullPacer::~HullPacer()
 	if (q_->length() != 0) {
 		//Clear all pending timers
 		hptbf_timer_.cancel();
+		rate_timer_.cancel();
+		token_timer_.cancel();
 		//Free up the packetqueue
 		for (Packet *p=q_->head();p!=0;p=p->next_) 
 			Packet::free(p);
@@ -76,30 +92,42 @@ HullPacer::~HullPacer()
 
 void HullPacer::recv(Packet *p, Handler *h)
 {
+	debug_cnt_++;
 	h_ = h;
+	hdr_cmn *ch = hdr_cmn::access(p);
+	int pktsize = ch->size()<<3;
+	bits_since_rt_upd_ += pktsize;
+	hdr_ip *iph = hdr_ip::access(p);
+
 	//start with a full bucket
-	printf("---------------------------------------\n");
-	printf("%f TBF::recv. Current Q is %d\n", Scheduler::instance().clock(), q_->length());
+	//printf("---------------------------------------\n");
+	if (debug_cnt_ > 50) {
+		printf("%f TBF::recv. Current Q is %d\n", Scheduler::instance().clock(), q_->length());
+		printf("FLOW ID: %d\n", iph->flowid());
+		debug_cnt_ = 0;
+	}
 	if (init_) {
-		tokens_=bucket_;
-		lastupdatetime_ = Scheduler::instance().clock();
+		getupdatedrate();
+		getupdatedtokens();
+		tokens_ = bucket_;
+		//lastupdatetime_ = Scheduler::instance().clock();
 		init_=0;
 	}
-	double now_ = Scheduler::instance().clock();
-	hdr_ip *iph = hdr_ip::access(p);
+	//double now_ = Scheduler::instance().clock();
 	//hdr_tcp *tcph = hdr_tcp::access(p);
-	printf("IPhdr gotecho: %d\n", iph->gotecnecho);
-	printf("Source addr: %d\n", iph->saddr());
-	printf("Dst addr: %d\n", iph->daddr());
-	printf("Source port: %d\n", iph->sport());
-	printf("Dst port: %d\n", iph->dport());
-	printf("FLOW ID: %d\n", iph->flowid());
-	hdr_cmn *ch=hdr_cmn::access(p);
+	//printf("IPhdr gotecho: %d\n", iph->gotecnecho);
+	//printf("Source addr: %d\n", iph->saddr());
+	//printf("Dst addr: %d\n", iph->daddr());
+	//printf("Source port: %d\n", iph->sport());
+	//printf("Dst port: %d\n", iph->dport());
+
+
 
 	//enque packets appropriately if a non-zero q already exists
-	if (q_->length() !=0) {
+	if (q_->length() != 0) {
 		if (q_->length() < qlen_) {
 			q_->enque(p);
+			q_length_bits_ += pktsize;
 			return;
 		}
 
@@ -107,30 +135,34 @@ void HullPacer::recv(Packet *p, Handler *h)
 		return;
 	}
 
-	double tok;
-	tok = getupdatedtokens();
-	printf("Tokens currently available: %f\n", tok);
+	// This will be happening asyncronously
+	// double tok;
+	// tok = getupdatedtokens();
+	//printf("Tokens currently available: %f\n", tok);
 
-	printf("ch->size (B) is: %d\n", ch->size());
-	int pktsize = ch->size()<<3;
-	printf("pktsize in bits is:%d\n", pktsize);
+	//printf("ch->size (B) is: %d\n", ch->size());
+	//printf("pktsize in bits is:%d\n", pktsize);
 
-	Scheduler& s = Scheduler::instance();
-	if (tokens_ >=pktsize) {
-		printf("Send NOW\n");
-		printf("Target == %d\n", target_);
-		if (target_ == NULL) printf("TARGET IS NULL\n");
-		else printf("NOT NULL\n");
+	//Scheduler& s = Scheduler::instance();
+	// If there are enough tokens...
+	if (tokens_ >= pktsize) {
+		//printf("Send NOW\n");
+		//printf("Target == %d\n", target_);
+		//if (target_ == NULL) printf("TARGET IS NULL\n");
+		//else printf("NOT NULL\n");
 		send(p,h_);
 		//s.schedule(target_, p, 0);
 		//target_->recv(p, (Handler*) NULL);
 		tokens_-=pktsize;
 	}
+	// else if there are not enough tokens, enqueue and resched for when
+	// there will be.
 	else {
-		printf("Don't have enough tokens\n");
+		//printf("Don't have enough tokens\n");
 		if (qlen_!=0) {
 			q_->enque(p);
-			printf("resched for: %f\n", now_+(pktsize-tokens_)/rate_);
+			q_length_bits_ += pktsize;
+			//printf("resched for: %f\n", now_+(pktsize-tokens_)/rate_);
 			hptbf_timer_.resched((pktsize-tokens_)/rate_);
 		}
 		else {
@@ -141,19 +173,40 @@ void HullPacer::recv(Packet *p, Handler *h)
 
 double HullPacer::getupdatedtokens(void)
 {
-	printf("TBF::getupdatedtokens\n");
-	double now=Scheduler::instance().clock();
-	
-	tokens_ += (now-lastupdatetime_)*rate_;
+	//printf("TBF::getupdatedtokens\n");
+	//double now=Scheduler::instance().clock();
+	// tokens in bits (rate is bits/s)
+	tokens_ += (token_upd_interval_)*rate_;
 	if (tokens_ > bucket_)
-		tokens_=bucket_;
-	lastupdatetime_ = Scheduler::instance().clock();
+		tokens_ = bucket_;
+	//lastupdatetime_ = Scheduler::instance().clock();
+	token_timer_.resched(token_upd_interval_);
+	if(fast_debug_cnt_ > 4999) {
+		printf("tokens = %f", tokens_);
+	}
 	return tokens_;
+}
+
+double HullPacer::getupdatedrate(void)
+{
+	//printf("TBF::getupdatedtokens\n");
+	//double now=Scheduler::instance().clock();
+	// rate is in bits/s
+	fast_debug_cnt_++;
+	rate_ = (1.0-eta_)*rate_ + eta_*(bits_since_rt_upd_/rate_upd_interval_)
+			 + beta_*(q_length_bits_);
+	bits_since_rt_upd_ = 0.0;
+	rate_timer_.resched(rate_upd_interval_);
+	if(fast_debug_cnt_ > 5000) {
+		printf("rate = %f", rate_);
+		fast_debug_cnt_ = 0;
+	}
+	return rate_;
 }
 
 void HullPacer::timeout(int)
 {
-	printf("===> %f TBF::timeout\n", Scheduler::instance().clock());
+	//printf("===> %f TBF::timeout\n", Scheduler::instance().clock());
 
 	if (q_->length() == 0) {
 		fprintf (stderr,"ERROR in tbf\n");
@@ -161,10 +214,12 @@ void HullPacer::timeout(int)
 	}
 	
 	Packet *p=q_->deque();
-	double tok;
-	tok = getupdatedtokens();
 	hdr_cmn *ch=hdr_cmn::access(p);
 	int pktsize = ch->size()<<3;
+	q_length_bits_ -= pktsize;
+	// this will be happening asynchr
+	// double tok;
+	// tok = getupdatedtokens();
 
 	//We simply send the packet here without checking if we have enough tokens
 	//because the timer is supposed to fire at the right time
@@ -184,8 +239,18 @@ void HullPacer::timeout(int)
 
 void HPTBF_Timer::expire(Event* /*e*/)
 {
-	printf("%f TBF_Timer::expire\n", Scheduler::instance().clock());
+	//printf("%f TBF_Timer::expire\n", Scheduler::instance().clock());
 	hp_->timeout(0);
+}
+
+void Rate_Update_Timer::expire(Event* /*e*/)
+{
+	hp_->getupdatedrate();
+}
+
+void Token_Update_Timer::expire(Event* /*e*/)
+{
+	hp_->getupdatedtokens();
 }
 
 
