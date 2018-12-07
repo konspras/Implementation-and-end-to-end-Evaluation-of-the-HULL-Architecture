@@ -74,6 +74,19 @@ protected:
 	HullPacer *hp_;
 };
 
+class Flow_Deassoc_Timer : public TimerHandler {
+public:
+	Flow_Deassoc_Timer(HullPacer *t, int flow) : TimerHandler() { 
+		hp_ = t;
+		flow_ = flow;
+	}
+	
+protected:
+	virtual void expire(Event *e);
+	HullPacer *hp_;
+	int flow_;
+};
+
 
 class HullPacer : public Connector {
 public:
@@ -82,6 +95,7 @@ public:
 	void timeout(int);
 	double getupdatedtokens();
 	double getupdatedrate();
+	void de_associate_flow(int);
 protected:
 	void recv(Packet *, Handler *);
 	double tokens_; //acumulated tokens
@@ -99,11 +113,17 @@ protected:
 	HPTBF_Timer hptbf_timer_;
 	Rate_Update_Timer rate_timer_;
 	Token_Update_Timer token_timer_;
+	// TODO: generalize
+	Flow_Deassoc_Timer* flow_assoc_timer_[500];
 	int init_;
 	// temporary and sketchy (because the handler is alw the same?)
 	Handler *h_;
-	int debug_cnt_;
-	int fast_debug_cnt_;
+	// TODO: generalize
+	int flow_assoc_ [500];
+	int times_assoc_ [500];
+	int times_deassoc_ [500];
+	double deassoc_time_;
+	double p_assoc_;
 };
 
 #endif

@@ -63,12 +63,12 @@ for {set i 0} {$i < $num_workloads} {incr i} {
         set req_size($i) 100
         set resp_size($i) 100
         set mean_service_time_s($i) 0.0001
-        set traffic_duration($i) 2.0
+        set traffic_duration($i) 10.0
     } elseif {$wk_type($i) == 1} {
         set req_size($i) 3500
         set resp_size($i) 2800
         set mean_service_time_s($i) 0.00253
-        set traffic_duration($i) 2.0
+        set traffic_duration($i) 10.0
     } elseif {$wk_type($i) == 2} {
         set req_size($i) 100
         set resp_size($i) 100
@@ -84,6 +84,13 @@ for {set i 0} {$i < $num_workloads} {incr i} {
         set resp_size($i) 2800
         set mean_service_time_s($i) 0.00253
         set traffic_duration($i) 10.0
+    } elseif {$wk_type($i) == 5} {
+        set req_size($i) 100
+        # 1Mb
+        set resp_size($i) 1000000 
+        # 10ms
+        set mean_service_time_s($i) 0.01
+        set traffic_duration($i) 10.0
     } else {
         set req_size($i) 3500
         set resp_size($i) 2800
@@ -92,7 +99,7 @@ for {set i 0} {$i < $num_workloads} {incr i} {
     }
     set exp_distr_mean($i) [expr [expr 1.0/[expr $wk_server_load($i)/100.0]] \
                         *$mean_service_time_s($i)]
-    set pace [expr  8 * $req_size($i) / $exp_distr_mean($i) / 1000000.0]
+    set pace [expr  8 * $resp_size($i) / $exp_distr_mean($i) / 1000000.0]
     set pkts_per_req [expr ceil( $req_size($i) / 536.0 )]
     set pkts_to_be_sent [expr 1 / $exp_distr_mean($i) * $traffic_duration($i) * $pkts_per_req]
     puts "Packets expected to be sent by workload $wk_type($i) = $pkts_to_be_sent"
@@ -240,6 +247,7 @@ if {$DCTCP != 0} {
     Agent/TCP set ecnhat_g_ $DCTCP_g;
 }
 
+# select if standard TCP ECN cabable
 if {$has_PQ} {
     Agent/TCP set ecn_ 1
     Agent/TCP set old_ecn_ 1
@@ -449,7 +457,7 @@ Application/TcpApp instproc server-recv { size server_id query_id wkld_id wkld_i
                 set process_this_query_at $occupied_until
                 #puts "currently busy"
         }
-        if {$wkld_id == 0 || $wkld_id == 3 || $wkld_id == 4} {
+        if {$wkld_id == 0 || $wkld_id == 3 || $wkld_id == 4 || $wkld_id == 5} {
             set query_proc_time $mean_service_time_s($wkld_indx)
         } elseif {$wkld_id == 1 || $wkld_id == 2} {
             set query_proc_time [expr [expr 180 * [$gamma_var($wkld_indx) value] + 10000.0]/1000000000.0]

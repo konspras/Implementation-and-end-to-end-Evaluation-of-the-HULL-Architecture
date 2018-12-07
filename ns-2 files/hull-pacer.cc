@@ -46,6 +46,7 @@
    Based on adc/tbf
    */
 
+#include <cstdlib>
 #include "connector.h" 
 #include "packet.h"
 #include "queue.h"
@@ -63,15 +64,24 @@ HullPacer::HullPacer() :
 	rate_timer_(this),
 	token_timer_(this),
 	init_(1),
-	debug_cnt_(0),
-	fast_debug_cnt_(0)
+	deassoc_time_(0.01),
+	p_assoc_(0.125)
 {
 	q_ = new PacketQueue();
+	std::srand(1);
+	// in bps
 	bind_bw("rate_",&rate_);
 	// Bucket is in bits
 	bind("bucket_",&bucket_);
 	// qlen is in packets
 	bind("qlen_",&qlen_);
+	for (int i=0; i<500; i++){
+		flow_assoc_[i] = 0;
+		Flow_Deassoc_Timer* ptr = new Flow_Deassoc_Timer(this, i);
+		times_assoc_[i] = 0;
+		times_deassoc_[i] = 0;
+		flow_assoc_timer_[i] = ptr;
+	}
 	
 }
 	
@@ -87,25 +97,14 @@ HullPacer::~HullPacer()
 			Packet::free(p);
 	}
 	delete q_;
+	for (int i=0; i<500; i++){
+		delete flow_assoc_timer_[i];
+	}
 }
 
 
 void HullPacer::recv(Packet *p, Handler *h)
 {
-	debug_cnt_++;
-	h_ = h;
-	hdr_cmn *ch = hdr_cmn::access(p);
-	int pktsize = ch->size()<<3;
-	bits_since_rt_upd_ += pktsize;
-	hdr_ip *iph = hdr_ip::access(p);
-
-	//start with a full bucket
-	//printf("---------------------------------------\n");
-	if (debug_cnt_ > 50) {
-		printf("%f TBF::recv. Current Q is %d\n", Scheduler::instance().clock(), q_->length());
-		printf("FLOW ID: %d\n", iph->flowid());
-		debug_cnt_ = 0;
-	}
 	if (init_) {
 		getupdatedrate();
 		getupdatedtokens();
@@ -113,9 +112,54 @@ void HullPacer::recv(Packet *p, Handler *h)
 		//lastupdatetime_ = Scheduler::instance().clock();
 		init_=0;
 	}
+
+	h_ = h;
+	hdr_cmn *ch = hdr_cmn::access(p);
+	int pktsize = ch->size()<<3;
+	bits_since_rt_upd_ += pktsize;
+	hdr_ip *iph = hdr_ip::access(p);
+	int this_flow = iph->flowid();
+	//printf("%f TBF::recv (%d bytes) from flow: (%d). Current Q in pkts is %d\n", Scheduler::instance().clock(), pktsize/8, iph->flowid(), q_->length());
+	//printf("Current rate (Mbbps) is: %f, current token level (Bytes):%f\n",rate_/8.0/1000000.0, tokens_/8.0 );
+
+	//start with a full bucket
+	//printf("---------------------------------------\n");
+	// 	printf("%f TBF::recv (%d bytes) from flow: (%d). Current Q in pkts is %d\n", Scheduler::instance().clock(), pktsize/8, iph->flowid(), q_->length());
+	// 	printf("Current rate (Mbbps) is: %f, current token level (Bytes):%f\n",rate_/8.0/1000000.0, tokens_/8.0 );
+	// }
+	
 	//double now_ = Scheduler::instance().clock();
 	//hdr_tcp *tcph = hdr_tcp::access(p);
-	//printf("IPhdr gotecho: %d\n", iph->gotecnecho);
+	int gotecho = iph->gotecnecho;
+	if(gotecho) {
+		double rand_num = (double) std::rand();
+		if(rand_num/RAND_MAX <= p_assoc_){
+			printf("%f TBF::recv (%d bytes) from flow: (%d). Current Q in pkts is %d\n", Scheduler::instance().clock(), pktsize/8, iph->flowid(), q_->length());
+		 	printf("Current rate (Mbbps) is: %f, current token level (Bytes):%f\n",rate_/8.0/1000000.0, tokens_/8.0 );
+
+			flow_assoc_[this_flow] = 1;
+			times_assoc_[this_flow] += 1;
+			flow_assoc_timer_[this_flow]->resched(deassoc_time_);
+			for (int i=0;i<30;i++){
+				printf("%d,",times_assoc_[i]);
+			}
+			printf("\n");
+			for (int i=0;i<30;i++){
+				printf("%d,",times_deassoc_[i]);
+			}
+			printf("\n");
+			// schedule reset
+			// also make sure to not set and reschedule if already set? Maybe?
+			// not clear
+		}
+
+	}
+
+	// if the flow is not associated just forward the packet
+	if(flow_assoc_[this_flow] == 0){
+		send(p,h_);
+		return;
+	}
 	//printf("Source addr: %d\n", iph->saddr());
 	//printf("Dst addr: %d\n", iph->daddr());
 	//printf("Source port: %d\n", iph->sport());
@@ -123,14 +167,16 @@ void HullPacer::recv(Packet *p, Handler *h)
 
 
 
-	//enque packets appropriately if a non-zero q already exists
+	// since the flow is associated, enque packets 
+	// appropriately if a non-zero q already exists
 	if (q_->length() != 0) {
+		printf("ENQUEUE\n");
 		if (q_->length() < qlen_) {
 			q_->enque(p);
 			q_length_bits_ += pktsize;
 			return;
 		}
-
+		printf("DROOOOOOOOP\n");
 		drop(p);
 		return;
 	}
@@ -166,6 +212,7 @@ void HullPacer::recv(Packet *p, Handler *h)
 			hptbf_timer_.resched((pktsize-tokens_)/rate_);
 		}
 		else {
+			printf("DROOOOOOOOP\n");
 			drop(p);
 		}
 	}
@@ -181,9 +228,8 @@ double HullPacer::getupdatedtokens(void)
 		tokens_ = bucket_;
 	//lastupdatetime_ = Scheduler::instance().clock();
 	token_timer_.resched(token_upd_interval_);
-	if(fast_debug_cnt_ > 4999) {
-		printf("tokens = %f", tokens_);
-	}
+	// 	printf("tokens = %f", tokens_);
+	// }
 	return tokens_;
 }
 
@@ -192,16 +238,20 @@ double HullPacer::getupdatedrate(void)
 	//printf("TBF::getupdatedtokens\n");
 	//double now=Scheduler::instance().clock();
 	// rate is in bits/s
-	fast_debug_cnt_++;
 	rate_ = (1.0-eta_)*rate_ + eta_*(bits_since_rt_upd_/rate_upd_interval_)
 			 + beta_*(q_length_bits_);
 	bits_since_rt_upd_ = 0.0;
 	rate_timer_.resched(rate_upd_interval_);
-	if(fast_debug_cnt_ > 5000) {
-		printf("rate = %f", rate_);
-		fast_debug_cnt_ = 0;
-	}
+	// 	printf("rate = %f", rate_);
+		// }
 	return rate_;
+}
+
+void HullPacer::de_associate_flow(int flow_id)
+{
+	printf("===== at: %f: de-associate called for flow: %d\n", Scheduler::instance().clock(),flow_id);
+	flow_assoc_[flow_id] = 0;
+	times_deassoc_[flow_id] += 1;
 }
 
 void HullPacer::timeout(int)
@@ -251,6 +301,11 @@ void Rate_Update_Timer::expire(Event* /*e*/)
 void Token_Update_Timer::expire(Event* /*e*/)
 {
 	hp_->getupdatedtokens();
+}
+
+void Flow_Deassoc_Timer::expire(Event* /*e*/)
+{
+	hp_->de_associate_flow(this->flow_);
 }
 
 

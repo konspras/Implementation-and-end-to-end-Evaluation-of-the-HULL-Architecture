@@ -1,15 +1,15 @@
 file_name='simple'
 
 # from 01 to 99
-loads='0238'
+loads='0654'
 workload_types='01'
-nums_flows='1'
-DCTCP='10'
-link_speed='100'
+nums_flows='20'
+DCTCP='30'
+link_speed='1000'
 PQ_on='1'
-PQ_rate='0.90'
+PQ_rate='0.95'
 PQ_thresh='1000.0'
-q_size='50'
+q_size='100'
 pacer_on='0 1'
 
 y_axis1=$nums_flows

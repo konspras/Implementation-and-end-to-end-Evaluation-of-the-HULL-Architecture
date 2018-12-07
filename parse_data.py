@@ -55,9 +55,9 @@ def main():
     #Create mean_latency - x_axis graph
     # print(means)
     plot_mean_lat_vs_xaxis(shape, final_paths, final_file_ids, x_axis, means,
-            means_99, x_axis_title, out_folder_name, log_y=False, plot_mean=True, plot_99=False)
+            means_99, x_axis_title, out_folder_name, log_y=False, plot_mean=False, plot_99=True)
     plot_mean_lat_vs_xaxis(shape, final_paths, final_file_ids, x_axis, means,
-            means_99, x_axis_title, out_folder_name, log_y=True, plot_mean=True, plot_99=False)
+            means_99, x_axis_title, out_folder_name, log_y=True, plot_mean=False, plot_99=True)
 
 
     # Create latency vs time graph
@@ -110,7 +110,7 @@ def plot_queue_size(list_of_data, path, x_axis, out_folder_name):
         fig.savefig(storage_folder+"/Q_size vs Time_"+str(x_axis[i])+".png", format="png")
 
         avg_q_occup = np.mean(q_size_B)
-        #print("Mon_mean: " + str(avg_q_occup) + "  " + path + " x: " + str(x_axis[i]))
+        print("Mon_mean: " + str(avg_q_occup) + "  " + path + " x: " + str(x_axis[i]))
 
 
 
@@ -149,7 +149,7 @@ def plot_queue_trace(list_of_data, path, x_axis, out_folder_name):
 
         fig.savefig(storage_folder+"/Q_TRACE vs Time_"+str(x_axis[i])+".png", format="png")
         avg_q_occup = np.mean(q_size_B)
-        #print("TR_mean: " + str(avg_q_occup) + "  " + path + " x: " +str(x_axis[i]))
+        print("TR_mean: " + str(avg_q_occup) + "  " + path + " x: " +str(x_axis[i]))
         #print("----------")
 
 
