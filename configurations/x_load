@@ -1,16 +1,17 @@
 file_name='x_load'
 
 # from 01 to 99
-loads='1205'
-workload_types='05'
-nums_flows='5'
-DCTCP='0 30'
+loads='1215'
+workload_types='01'
+nums_flows='2'
+DCTCP='0'
 link_speed='1000'
 PQ_on='0 1'
 PQ_rate='0.95'
-PQ_thresh='3000.0'
-q_size='100'
-pacer_on='0 1'
+PQ_thresh='1000.0'
+q_size='250'
+pacer_on='0'
+
 
 y_axis1=$nums_flows
 y_axis1_name=flows

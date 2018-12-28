@@ -55,9 +55,9 @@ def main():
     #Create mean_latency - x_axis graph
     # print(means)
     plot_mean_lat_vs_xaxis(shape, final_paths, final_file_ids, x_axis, means,
-            means_99, x_axis_title, out_folder_name, log_y=False, plot_mean=False, plot_99=True)
+            means_99, x_axis_title, out_folder_name, log_y=False, plot_mean=True, plot_99=False)
     plot_mean_lat_vs_xaxis(shape, final_paths, final_file_ids, x_axis, means,
-            means_99, x_axis_title, out_folder_name, log_y=True, plot_mean=False, plot_99=True)
+            means_99, x_axis_title, out_folder_name, log_y=True, plot_mean=True, plot_99=False)
 
 
     # Create latency vs time graph

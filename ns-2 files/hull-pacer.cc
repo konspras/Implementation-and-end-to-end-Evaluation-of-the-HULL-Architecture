@@ -170,13 +170,11 @@ void HullPacer::recv(Packet *p, Handler *h)
 	// since the flow is associated, enque packets 
 	// appropriately if a non-zero q already exists
 	if (q_->length() != 0) {
-		printf("ENQUEUE\n");
 		if (q_->length() < qlen_) {
 			q_->enque(p);
 			q_length_bits_ += pktsize;
 			return;
 		}
-		printf("DROOOOOOOOP\n");
 		drop(p);
 		return;
 	}

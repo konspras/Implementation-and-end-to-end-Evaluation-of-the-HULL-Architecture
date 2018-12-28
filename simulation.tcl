@@ -15,6 +15,11 @@ set PQ_rate [lindex $argv 8]
 set PQ_thresh [lindex $argv 9]
 set queue_size [lindex $argv 10]
 set has_pacer [lindex $argv 11]
+# specify the desired mean load on the client-switch link.
+# At poisson intervals, each server will decide to start sending a 10MB
+# file to the client. To get the specified mean throughput, the formula should be:
+# mean_send_interval_per_server =  
+set background_traffic_mbbps [lindex $argv 12]
 
 # in bits (as hw impl of HULL)
 set pacer_bucket_ 24000
@@ -24,11 +29,9 @@ set pacer_rate 100.0M
 # in pkts
 set pacer_qlen $queue_size
 
-# in ms
-set link_latency 0.05ms
+# in ms - 5micro
+set link_latency 0.005ms
 
-# DCTCP
-#set DCTCP_K  20
 set DCTCP_g  [expr 1.0/16.0]
 
 # in packets
@@ -173,6 +176,8 @@ if {$has_pacer} {
     $client_pacer set bucket_ $pacer_bucket_
     $client_pacer set rate_ $pacer_rate
     $client_pacer set qlen_  $pacer_qlen
+    $client_pacer set rate_upd_interval_  0.000032
+
     $ns simplex-link-op $client_node $switch_node insert-hullPacer $client_pacer
 }
 
@@ -191,6 +196,10 @@ for {set i 0} {$i < $num_flows} {incr i} {
         $server_pacer($i) set bucket_ $pacer_bucket_
         $server_pacer($i) set rate_ $pacer_rate
         $server_pacer($i) set qlen_  $pacer_qlen
+        $server_pacer($i) set rate_upd_interval_  0.000032
+        if {$i == 0} {
+            $server_pacer($i) set debug_ 0
+        }
         $ns simplex-link-op $s($i) $switch_node insert-hullPacer $server_pacer($i)
     }
 }
@@ -212,7 +221,10 @@ for {set i 0} {$i < $num_flows} {incr i} {
 # def is 536 - example uses 1460.. but the PQ threshold!
 #Agent/TCP/FullTcp set segsize_ $packetSize
 # default is 20! ex is at 1256, repr is at infin. was not using this until 18/11
+# Book sais Upper bound on window size
 Agent/TCP set window_ 1256
+Agent/TCP set max_ssthresh_ 111200
+Agent/TCP set minrto_ 0.01
 # boolean: re-init cwnd after connection goes idle.  On by default. 
 # used true from reproduc until 18/11. Setting to false bcs of example
 Agent/TCP set slow_start_restart_ false
@@ -220,7 +232,7 @@ Agent/TCP set slow_start_restart_ false
 Agent/TCP set windowOption_ 0
 # probly smthing to do with simulation sampling. extreme (0.000001 <- dctcp
 # reproductions study (was using until 19/11)) - 0.01 is default and also used in example. 
-Agent/TCP set tcpTick_ 0.000001
+Agent/TCP set tcpTick_ 0.00000001
 # retransmission time out. default values are fine.
 #Agent/TCP set minrto_ $min_rto
 #Agent/TCP set maxrto_ 2
@@ -235,13 +247,16 @@ Agent/TCP/FullTcp set nodelay_ true; # disable Nagle
 Agent/TCP/FullTcp set segsperack_ 1;
 # delayed ack (repr has it at 0.000006, ex has it at 0.04, def is 0.1)
 Agent/TCP/FullTcp set interval_ 0.000006
+# set at 600 bcs not sure of how a 1KB PQ threshold is supposed to work with 1500B
+# packets. DCTCP K is in packets. So to get 30K need to set it to 30,000/600 = 50
+# and for 6K: 6000/600 = 10
+Agent/TCP/FullTcp set segsize_ 950
 
 if {$DCTCP != 0} {
     # def is 0
     Agent/TCP set ecn_ 1
     # def is 0
     Agent/TCP set old_ecn_ 1
-    
     Agent/TCP set ecnhat_ true
     Agent/TCPSink set ecnhat_ true
     Agent/TCP set ecnhat_g_ $DCTCP_g;
@@ -320,12 +335,7 @@ for {set wkld 0} {$wkld < $num_workloads} {incr wkld} {
         
     }
 }
-# puts "number of wkl types = [array size wk_type]"
-# puts $flow_id
-# puts $tcp_ll 
-# puts $sink_ll 
-# puts $app_client_ll 
-# puts $app_server_ll 
+
 # queue monitoring
 set qf [open "$result_path/q_mon_$file_ident" w]
 set qmon_size [$ns monitor-queue $switch_node $client_node $qf 0.01]
@@ -338,9 +348,9 @@ if {$DCTCP != 0} {
     #$cl_sw_q trace ave_
     $cl_sw_q attach $tchan_
 }
+
 # Network Setup Complete - Proceed with sending queries --------------------------
 #---------------------------------------------------------------------------------
-
 
 # list of list of list. First indx is workload_type, 2nd indx is flow_id(server_id), 3d indx is time
 # Holds, for each server, the timestamps of query sending and receiving times

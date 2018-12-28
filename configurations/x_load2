@@ -1,0 +1,50 @@
+file_name='x_load2'
+
+# from 01 to 99
+loads='1212'
+workload_types='05'
+nums_flows='1'
+DCTCP='30'
+link_speed='1000'
+PQ_on='0 1'
+PQ_rate='0.95'
+PQ_thresh='2000.0'
+q_size='100'
+pacer_on='1'
+
+#loads='1205'
+#workload_types='05'
+#nums_flows='5'
+#DCTCP='0 30'
+#link_speed='1000'
+#PQ_on='0 1'
+#PQ_rate='0.95'
+#PQ_thresh='3000.0'
+#q_size='100'
+#pacer_on='0 1'
+
+y_axis1=$nums_flows
+y_axis1_name=flows
+y_axis2=$workload_types
+y_axis2_name=wrkld
+y_axis3=$DCTCP
+y_axis3_name=DCTCP_K
+y_axis4=$PQ_on
+y_axis4_name=has_PQ
+y_axis5=$PQ_rate
+y_axis5_name=PQrate
+y_axis6=$PQ_thresh
+y_axis6_name=PQthresh
+y_axis7=$pacer_on
+y_axis7_name=has_pacer
+
+x_axis=$loads
+x_axis_name=Server_Load
+
+# order: num_flows->server_load->workload_type->DCTCP_K->link_speed->has_PQ->
+# PQ_rate->PQ_thresh->Q_size->has_pacer
+# args 0 and 1 are always the same. The rest should respect the order...
+
+sim_cmnd="ns simulation.tcl $tmp_path $x $y1 $x $y2 $y3 $link_speed $y4 $y5 $y6 $q_size $y7"
+wk_matches_ld=1
+if [ ${#x} = $(( 2 * ${#y2})) ]; then wk_matches_ld=1; else wk_matches_ld=0; fi

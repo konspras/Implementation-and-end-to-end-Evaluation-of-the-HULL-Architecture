@@ -6,11 +6,11 @@ workload_types='01'
 nums_flows='20'
 DCTCP='30'
 link_speed='1000'
-PQ_on='1'
+PQ_on='0 1'
 PQ_rate='0.95'
 PQ_thresh='1000.0'
 q_size='100'
-pacer_on='0 1'
+pacer_on='1'
 
 y_axis1=$nums_flows
 y_axis1_name=flows
