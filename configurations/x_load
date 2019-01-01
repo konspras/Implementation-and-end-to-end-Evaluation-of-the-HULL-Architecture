@@ -1,15 +1,17 @@
 file_name='x_load'
 
 # from 01 to 99
-loads='1215'
-workload_types='01'
+loads='20 40'
+workload_types='1'
 nums_flows='2'
 DCTCP='0'
 link_speed='1000'
-PQ_on='0 1'
+background_traffic='100'
+foreground_traffic='10'
+PQ_on='0'
 PQ_rate='0.95'
 PQ_thresh='1000.0'
-q_size='250'
+q_size='500'
 pacer_on='0'
 
 
@@ -35,6 +37,6 @@ x_axis_name=Server_Load
 # PQ_rate->PQ_thresh->Q_size->has_pacer
 # args 0 and 1 are always the same. The rest should respect the order...
 
-sim_cmnd="ns simulation.tcl $tmp_path $x $y1 $x $y2 $y3 $link_speed $y4 $y5 $y6 $q_size $y7"
+sim_cmnd="ns simulation.tcl $tmp_path $x $y1 $x $y2 $y3 $link_speed $y4 $y5 $y6 $q_size $y7 $background_traffic $foreground_traffic"
 wk_matches_ld=1
 if [ ${#x} = $(( 2 * ${#y2})) ]; then wk_matches_ld=1; else wk_matches_ld=0; fi

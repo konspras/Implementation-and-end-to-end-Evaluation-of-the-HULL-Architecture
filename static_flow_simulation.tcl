@@ -25,6 +25,7 @@ set pacer_qlen $queue_size
 
 # in ms - 5micro
 set link_latency 0.005ms
+# set link_latency 0.5ms
 
 # DCTCP
 #set DCTCP_K  20

@@ -49,19 +49,38 @@ proc dispRes { num_flows num_workloads sendTimesList receiveTimesList } {
     }
 }
 
-proc saveToFile { result_path file_ident sendTimesList receiveTimesList num_flows } {        
+proc saveListToFile { result_path file_ident sendTimesList receiveTimesList \
+                 num_cols } {        
     #puts "sendTimesList $sendTimesList"
     #puts "receiveTimesList $receiveTimesList"
-    set sfp [open "$result_path/send_times$file_ident.csv" w+]
-    set rfp [open "$result_path/rec_times$file_ident.csv" w+]
+    set sfp [open "$result_path/send_times|$file_ident.csv" w+]
+    set rfp [open "$result_path/rec_times|$file_ident.csv" w+]
     set num_iter [llength [lindex $sendTimesList 0]]
     for {set i 1} {$i < $num_iter} {incr i} {
-        for {set j 0} {$j < $num_flows} {incr j} {
+        for {set j 0} {$j < $num_cols} {incr j} {
             puts -nonewline $sfp [lindex [lindex $sendTimesList $j] $i]
             puts -nonewline $sfp ","
             puts -nonewline $rfp [lindex [lindex $receiveTimesList $j] $i]
             puts -nonewline $rfp ","
         }
+        puts -nonewline $sfp "\n"
+        puts -nonewline $rfp "\n"
+    } 
+}
+
+proc saveArrayToFile { result_path file_ident sendTimesArray_ receiveTimesArray_ } {
+    upvar $sendTimesArray_ sendTimesArray
+    upvar $receiveTimesArray_ receiveTimesArray
+
+
+    puts [array size receiveTimesArray]
+
+    set sfp [open "$result_path/send_times|$file_ident.csv" w+]
+    set rfp [open "$result_path/rec_times|$file_ident.csv" w+]
+    set num_iter [array size sendTimesArray]
+    for {set i 0} {$i < $num_iter} {incr i} {
+        puts -nonewline $sfp $sendTimesArray($i)
+        puts -nonewline $rfp $receiveTimesArray($i)
         puts -nonewline $sfp "\n"
         puts -nonewline $rfp "\n"
     } 

@@ -49,14 +49,8 @@ do
 									# this is sketchy..
 									source $config_file
 									echo $sim_cmnd
-									echo match $wk_matches_ld
-									if [ $wk_matches_ld = 1 ]
-									then 
-										echo "workloads and loads match"
-										$sim_cmnd
-									else
-										echo "workloads and loads don't match"
-									fi
+									$sim_cmnd
+
 								fi
 							done
 						done
