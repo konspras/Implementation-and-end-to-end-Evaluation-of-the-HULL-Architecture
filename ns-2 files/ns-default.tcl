@@ -704,6 +704,14 @@ NetworkInterface set debug_ false
 HullPacer set rate_ 64k
 HullPacer set bucket_ 1024
 HullPacer set qlen_ 50
+HullPacer set rate_upd_interval_ 0.000064
+HullPacer set eta_ 0.125
+HullPacer set beta_ 16
+HullPacer set p_assoc_ 0.125
+HullPacer set deassoc_time_ 0.01
+HullPacer set debug_ 0
+HullPacer set verbose_ 0
+HullPacer set num_flows_ 0
 
 # defaults for tbf
 TBF set rate_ 64k

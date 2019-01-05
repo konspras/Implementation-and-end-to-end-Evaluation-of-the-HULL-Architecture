@@ -552,7 +552,6 @@ SimpleLink instproc phantomQueue { rate thresh } {
 #
 SimpleLink instproc insert-hullPacer { pacer } { 
 	$self instvar queue_ drophead_
-	puts "insert-hullPacer"
 	$pacer target [$queue_ target]
 	$queue_ target $pacer
 

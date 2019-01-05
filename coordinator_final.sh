@@ -1,12 +1,21 @@
-#file_name='nofanout_60_9flows'
-#file_name='onlyfanout_wkld1_30_10flows'
-#file_name='onlyfanout_wkld1_30_10flows_4000tokens'
-#file_name='bkg200_fanout_wkld1_30_10flows'
-# file_name='bkg200_fanout_wkld4_30_10flows'
-#file_name='bkg200_fanout_wkld4_30_10flows_4000tokens'
-#file_name='bkg400_fanout_wkld1_30_10flows'
-file_name='bkg600_fanout_wkld1_30_10flows'
-# file_name='bkg200_fanout_wkld4_30_10flows'
+# file_name='nofanout_20_9flows'
+# file_name='nofanout_40_9flows'
+# file_name='nofanout_60_9flows'
+
+
+
+# 30% for around 12,000 requests and a total of 25Mbps
+file_name='onlyfanout_wkld1_30_10flows'
+# file_name='bkg200_fanout_wkld1_30_10flows'
+# file_name='bkg400_fanout_wkld1_30_10flows'
+# file_name='bkg600_fanout_wkld1_30_10flows'
+
+# 5% for around 50,000 requests and 4 Mbps
+#file_name='onlyfanout_wkld0_5_10flows'
+#file_name='bkg200_fanout_wkld0_5_10flows'
+#file_name='bkg400_fanout_wkld0_5_10flows'
+#file_name='bkg600_fanout_wkld0_5_10flows'
+
 # for 20% load: for: 0.09, back 200 (20% of requests are backg and 80% are fore)
 # for 40% 0.18 400
 # for 60% 0.27 600
@@ -15,8 +24,8 @@ file_name='bkg600_fanout_wkld1_30_10flows'
 have_fanout='1'
 loads='30'
 workload_types='1'
-have_bkg='1'
-background_traffic='600'
+have_bkg='0'
+background_traffic='200'
 have_frg='0'
 foreground_traffic='0.27'
 
@@ -59,18 +68,18 @@ ns simulation.tcl $result_path $loads $nums_flows $loads $workload_types \
 echo "----------------------------------------------------------------------"
 
 
-# # DCTCP-6K_pacer
-# result_path="results/$file_name/DCTCP6_pacer"
-# mkdir -p $result_path
+# # # DCTCP-6K_pacer
+# # result_path="results/$file_name/DCTCP6_pacer"
+# # mkdir -p $result_path
 
-# DCTCP='6'
-# pacer_on='1'
+# # DCTCP='6'
+# # pacer_on='1'
 
-# ns simulation.tcl $result_path $loads $nums_flows $loads $workload_types \
-# 	$DCTCP $link_speed $PQ_on $PQ_rate $PQ_thresh $q_size $pacer_on \
-# 	$have_bkg $background_traffic $have_frg $foreground_traffic $have_fanout \
-	# $pacer_bucket
-# echo "----------------------------------------------------------------------"
+# # ns simulation.tcl $result_path $loads $nums_flows $loads $workload_types \
+# # 	$DCTCP $link_speed $PQ_on $PQ_rate $PQ_thresh $q_size $pacer_on \
+# # 	$have_bkg $background_traffic $have_frg $foreground_traffic $have_fanout \
+# # 	$pacer_bucket
+# # echo "----------------------------------------------------------------------"
 
 
 # DCTCP_pacer_PQ_95_1000

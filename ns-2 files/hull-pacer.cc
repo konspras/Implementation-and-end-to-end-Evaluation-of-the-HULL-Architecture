@@ -65,7 +65,10 @@ HullPacer::HullPacer() :
 	token_timer_(this),
 	init_(1),
 	deassoc_time_(0.01),
-	p_assoc_(0.125)
+	p_assoc_(0.125),
+	debug_(0),
+	verbose_(0),
+	num_flows_(0)
 {
 	q_ = new PacketQueue();
 	std::srand(1);
@@ -75,6 +78,16 @@ HullPacer::HullPacer() :
 	bind("bucket_",&bucket_);
 	// qlen is in packets
 	bind("qlen_",&qlen_);
+	// in seconds
+	bind("rate_upd_interval_",&rate_upd_interval_);
+	bind("eta_",&eta_);
+	bind("beta_",&beta_);
+	bind("p_assoc_",&p_assoc_);
+	bind("deassoc_time_",&deassoc_time_);
+	bind("debug_",&debug_);
+	bind("verbose_",&verbose_);
+	bind("num_flows_",&num_flows_);
+
 	for (int i=0; i<500; i++){
 		flow_assoc_[i] = 0;
 		Flow_Deassoc_Timer* ptr = new Flow_Deassoc_Timer(this, i);
@@ -109,108 +122,104 @@ void HullPacer::recv(Packet *p, Handler *h)
 		getupdatedrate();
 		getupdatedtokens();
 		tokens_ = bucket_;
-		//lastupdatetime_ = Scheduler::instance().clock();
 		init_=0;
 	}
-
+	//printf("%d  %f\n", debug_, rate_upd_interval_);
 	h_ = h;
 	hdr_cmn *ch = hdr_cmn::access(p);
 	int pktsize = ch->size()<<3;
 	bits_since_rt_upd_ += pktsize;
 	hdr_ip *iph = hdr_ip::access(p);
 	int this_flow = iph->flowid();
-	//printf("%f TBF::recv (%d bytes) from flow: (%d). Current Q in pkts is %d\n", Scheduler::instance().clock(), pktsize/8, iph->flowid(), q_->length());
-	//printf("Current rate (Mbbps) is: %f, current token level (Bytes):%f\n",rate_/8.0/1000000.0, tokens_/8.0 );
-
-	//start with a full bucket
-	//printf("---------------------------------------\n");
-	// 	printf("%f TBF::recv (%d bytes) from flow: (%d). Current Q in pkts is %d\n", Scheduler::instance().clock(), pktsize/8, iph->flowid(), q_->length());
-	// 	printf("Current rate (Mbbps) is: %f, current token level (Bytes):%f\n",rate_/8.0/1000000.0, tokens_/8.0 );
-	// }
+	if(verbose_==1){
+		printf("--------------------------------------------------------------\n");
+		printf("%f TBF::recv (%d bytes) from flow: (%d). Current Q in pkts is %d\n", Scheduler::instance().clock(), pktsize/8, iph->flowid(), q_->length());
+		printf("Current rate (Mbbps) is: %f, current token level (Bytes):%f\n",rate_/1000000.0, tokens_/8.0 );
+		printf("Source addr: %d\n", iph->saddr());
+		printf("Dst addr: %d\n", iph->daddr());
+		printf("Source port: %d\n", iph->sport());
+		printf("Dst port: %d\n", iph->dport());
+		printf("Associated:\n");
+		for(int i = 0; i<num_flows_; i++){
+			printf("(%d,%d)", i, times_assoc_[i]);
+		}
+		printf("\nDeassociated:\n");
+		for(int i = 0; i<num_flows_; i++){
+			printf("(%d,%d)", i, times_deassoc_[i]);
+		}
+		printf("\n");
+	}
 	
-	//double now_ = Scheduler::instance().clock();
+	
 	//hdr_tcp *tcph = hdr_tcp::access(p);
 	int gotecho = iph->gotecnecho;
 	if(gotecho) {
 		double rand_num = (double) std::rand();
 		if(rand_num/RAND_MAX <= p_assoc_){
-			printf("%f TBF::recv (%d bytes) from flow: (%d). Current Q in pkts is %d\n", Scheduler::instance().clock(), pktsize/8, iph->flowid(), q_->length());
-		 	printf("Current rate (Mbbps) is: %f, current token level (Bytes):%f\n",rate_/8.0/1000000.0, tokens_/8.0 );
-
+			if(verbose_){
+				printf("Flow Associated\n");
+			}
 			flow_assoc_[this_flow] = 1;
 			times_assoc_[this_flow] += 1;
 			flow_assoc_timer_[this_flow]->resched(deassoc_time_);
-			for (int i=0;i<30;i++){
-				printf("%d,",times_assoc_[i]);
-			}
-			printf("\n");
-			for (int i=0;i<30;i++){
-				printf("%d,",times_deassoc_[i]);
-			}
-			printf("\n");
-			// schedule reset
-			// also make sure to not set and reschedule if already set? Maybe?
-			// not clear
 		}
 
 	}
 
 	// if the flow is not associated just forward the packet
 	if(flow_assoc_[this_flow] == 0){
+		if(verbose_){
+			printf("Send immediately - non-associated\n");
+		}
 		send(p,h_);
 		return;
 	}
-	//printf("Source addr: %d\n", iph->saddr());
-	//printf("Dst addr: %d\n", iph->daddr());
-	//printf("Source port: %d\n", iph->sport());
-	//printf("Dst port: %d\n", iph->dport());
-
-
 
 	// since the flow is associated, enque packets 
 	// appropriately if a non-zero q already exists
 	if (q_->length() != 0) {
+		if(verbose_){
+			printf("Queue is not empty, enqueue\n");
+		}
 		if (q_->length() < qlen_) {
 			q_->enque(p);
 			q_length_bits_ += pktsize;
 			return;
 		}
+		if(verbose_){
+			printf("Queue is full, drop\n");
+		}
 		drop(p);
 		return;
 	}
 
-	// This will be happening asyncronously
-	// double tok;
-	// tok = getupdatedtokens();
-	//printf("Tokens currently available: %f\n", tok);
-
-	//printf("ch->size (B) is: %d\n", ch->size());
-	//printf("pktsize in bits is:%d\n", pktsize);
-
-	//Scheduler& s = Scheduler::instance();
 	// If there are enough tokens...
 	if (tokens_ >= pktsize) {
-		//printf("Send NOW\n");
-		//printf("Target == %d\n", target_);
-		//if (target_ == NULL) printf("TARGET IS NULL\n");
-		//else printf("NOT NULL\n");
+		if(verbose_){
+			printf("Sending immediately - ASSOC\n");
+		}
 		send(p,h_);
-		//s.schedule(target_, p, 0);
-		//target_->recv(p, (Handler*) NULL);
 		tokens_-=pktsize;
 	}
+
 	// else if there are not enough tokens, enqueue and resched for when
 	// there will be.
 	else {
-		//printf("Don't have enough tokens\n");
+		
 		if (qlen_!=0) {
 			q_->enque(p);
+			if(verbose_){
+				double now=Scheduler::instance().clock();
+				printf("Scheduling packet for when there are tokens. Curr Q len is %d\n", q_->length());
+				printf("At %f\n", now+(pktsize-tokens_)/rate_);
+			}
 			q_length_bits_ += pktsize;
-			//printf("resched for: %f\n", now_+(pktsize-tokens_)/rate_);
 			hptbf_timer_.resched((pktsize-tokens_)/rate_);
 		}
 		else {
-			printf("DROOOOOOOOP\n");
+			if(verbose_){
+				printf("There is no queue, drop\n");
+			}
 			drop(p);
 		}
 	}
@@ -218,43 +227,44 @@ void HullPacer::recv(Packet *p, Handler *h)
 
 double HullPacer::getupdatedtokens(void)
 {
-	//printf("TBF::getupdatedtokens\n");
-	//double now=Scheduler::instance().clock();
-	// tokens in bits (rate is bits/s)
 	tokens_ += (token_upd_interval_)*rate_;
 	if (tokens_ > bucket_)
 		tokens_ = bucket_;
-	//lastupdatetime_ = Scheduler::instance().clock();
 	token_timer_.resched(token_upd_interval_);
-	// 	printf("tokens = %f", tokens_);
-	// }
 	return tokens_;
 }
 
 double HullPacer::getupdatedrate(void)
 {
-	//printf("TBF::getupdatedtokens\n");
-	//double now=Scheduler::instance().clock();
 	// rate is in bits/s
 	rate_ = (1.0-eta_)*rate_ + eta_*(bits_since_rt_upd_/rate_upd_interval_)
 			 + beta_*(q_length_bits_);
 	bits_since_rt_upd_ = 0.0;
 	rate_timer_.resched(rate_upd_interval_);
-	// 	printf("rate = %f", rate_);
-		// }
+
+	// added this beacuse if the rate is close to 0, a queued packet might be scheduled 
+	// long into the future.
+	if (q_->length() !=0 ) {
+		Packet *p=q_->head();
+		hdr_cmn *ch=hdr_cmn::access(p);
+		int pktsize = ch->size()<<3;
+		if (tokens_ > pktsize) {
+			hptbf_timer_.resched(0.0);
+		} else {
+			hptbf_timer_.resched((pktsize-tokens_)/rate_);
+		}
+	}
 	return rate_;
 }
 
 void HullPacer::de_associate_flow(int flow_id)
 {
-	printf("===== at: %f: de-associate called for flow: %d\n", Scheduler::instance().clock(),flow_id);
 	flow_assoc_[flow_id] = 0;
 	times_deassoc_[flow_id] += 1;
 }
 
 void HullPacer::timeout(int)
 {
-	//printf("===> %f TBF::timeout\n", Scheduler::instance().clock());
 
 	if (q_->length() == 0) {
 		fprintf (stderr,"ERROR in tbf\n");
@@ -265,15 +275,7 @@ void HullPacer::timeout(int)
 	hdr_cmn *ch=hdr_cmn::access(p);
 	int pktsize = ch->size()<<3;
 	q_length_bits_ -= pktsize;
-	// this will be happening asynchr
-	// double tok;
-	// tok = getupdatedtokens();
 
-	//We simply send the packet here without checking if we have enough tokens
-	//because the timer is supposed to fire at the right time
-	// Scheduler& s = Scheduler::instance();
-	// s.schedule(target_, p, 0);
-	//target_->recv(p, (Handler*) NULL);
 	send(p, h_);
 	tokens_-=pktsize;
 
@@ -287,7 +289,6 @@ void HullPacer::timeout(int)
 
 void HPTBF_Timer::expire(Event* /*e*/)
 {
-	//printf("%f TBF_Timer::expire\n", Scheduler::instance().clock());
 	hp_->timeout(0);
 }
 

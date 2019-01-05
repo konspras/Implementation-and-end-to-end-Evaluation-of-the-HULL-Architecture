@@ -39,11 +39,11 @@ set link_latency 0.005ms
 
 set DCTCP_g  [expr 1.0/16.0]
 
-set simulation_duration 200.0
+set simulation_duration 400.0
 set traffic_start_time 1.0
-set background_traffic_duration 100.0
-set foreground_traffic_duration 100.0
-set fanout_traffic_duration 100.0
+set background_traffic_duration 300.0
+set foreground_traffic_duration 300.0
+set fanout_traffic_duration 300.0
 # in packets
 Queue set limit_ $queue_size
 Queue/DropTail set drop_prio_ false
@@ -161,8 +161,8 @@ proc finish {} {
 
 
 set ns [new Simulator]
-set tf [open out.tr w]
-$ns trace-all $tf
+# set tf [open out.tr w]
+# $ns trace-all $tf
 
 # set nf [open out.nam w]
 # $ns namtrace-all $nf

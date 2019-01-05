@@ -124,6 +124,9 @@ protected:
 	int times_deassoc_ [500];
 	double deassoc_time_;
 	double p_assoc_;
+	int debug_;
+	int verbose_;
+	int num_flows_;
 };
 
 #endif

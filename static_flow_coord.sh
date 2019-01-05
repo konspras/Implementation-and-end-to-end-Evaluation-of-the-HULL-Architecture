@@ -8,13 +8,13 @@ link_speed='1000'
 for num_flows in $nums_flows
 do
 	echo "Number of flows: $num_flows"
-	ns static_flow_simulation.tcl results/static_flow $num_flows 0 $link_speed 0 0.95 1000 500 0 TCP
+	ns static_flow_simulation.tcl results/static_flow_main $num_flows 0 $link_speed 0 0.95 1000 500 0 TCP
 	echo ---------------------------------------------------------------------------
-	ns static_flow_simulation.tcl results/static_flow $num_flows 30 $link_speed 0 0.95 1000 500 0 DCTCP
+	ns static_flow_simulation.tcl results/static_flow_main $num_flows 30 $link_speed 0 0.95 1000 500 0 DCTCP
 	echo ---------------------------------------------------------------------------
-	ns static_flow_simulation.tcl results/static_flow $num_flows 6 $link_speed 0 0.95 1000 500 1 DCTCP6_Pacer
+	ns static_flow_simulation.tcl results/static_flow_main $num_flows 6 $link_speed 0 0.95 1000 500 1 DCTCP6_Pacer
 	echo ---------------------------------------------------------------------------
-	ns static_flow_simulation.tcl results/static_flow $num_flows 500 $link_speed 1 0.9 1000 500 1 DCTCP_Pacer_PQ
+	ns static_flow_simulation.tcl results/static_flow_main $num_flows 500 $link_speed 1 0.9 1000 500 1 DCTCP_Pacer_PQ
 	echo "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
 done
 echo "Simulations Completed"
