@@ -519,15 +519,6 @@ rtModel/Deterministic set downInterval_ 1.0
 # Application
 #
 
-Application/MmApp set rate0_ 0.3mb
-Application/MmApp set rate1_ 0.6mb
-Application/MmApp set rate2_ 0.9mb
-Application/MmApp set rate3_ 1.2mb
-Application/MmApp set rate4_ 1.5mb
-Application/MmApp set pktsize_ 1000
-Application/MmApp set random_ false
-
-
 
 Application/Traffic/CBR_PP set rate_ 448Kb ;# corresponds to interval of 3.75ms
 Application/Traffic/CBR_PP set packetSize_ 210
