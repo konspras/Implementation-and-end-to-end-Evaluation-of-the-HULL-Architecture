@@ -69,15 +69,12 @@ LinkDelay::LinkDelay()
 
 int LinkDelay::command(int argc, const char*const* argv)
 {
-	//printf("LinkDelay::command. argc: %d\n", argc);
 	if (argc == 2) {
 		if (strcmp(argv[1], "isDynamic") == 0) {
-			//printf("it is dynamic_\n");
 			dynamic_ = 1;
 			itq_ = new PacketQueue();
 			return TCL_OK;
 		} else if (strcmp(argv[1], "hasPQ") == 0) {
-			//printf("HAS PQ!\n");
 			has_PQ_ = 1;
 			return TCL_OK;
 		}
@@ -98,31 +95,6 @@ int LinkDelay::command(int argc, const char*const* argv)
 
 void LinkDelay::recv(Packet* p, Handler* h)
 {
-	//printf("LinkDelay::recv %d bytes at time %f. Has PQ?: %d\n", hdr_cmn::access(p)->size(), Scheduler::instance().clock(), has_PQ_);
-
-	// if(has_PQ_) {
-	// 	hdr_flags* hf = hdr_flags::access(p);
-	// 	hdr_ip* iph = hdr_ip::access(p);
-	// 	hf->ce();
-	// 	//if(hf->ect()) printf("ECN compatible");
-	// 	hf->ecnecho();
-	// 	iph->saddr();
-	// 	iph->sport();
-	// 	iph->daddr();
-	// 	iph->dport();
-	// 	iph->flowid();
-	// 	//printf("ce:%s\n", hf->ce());
-	// 	// this can crash as well
- // 		//printf("ect:%s\n", hf->ect());
- // 		// crashes with DCTCP
- // 		//printf("ecnecho(TCP):%s\n", hf->ecnecho());
-
- // 		// printf("src addr %d, port%d\n", iph->saddr(),iph->sport());
- // 		// printf("dst addr %d, port%d\n", iph->daddr(),iph->dport());
- // 		// printf("flow id %d\n", iph->flowid());
- // 		//printf("-------------------------------------------------\n");
-
-	// }
 	double txt = txtime(p);
 
 	if (has_PQ_) {
@@ -144,29 +116,18 @@ void LinkDelay::recv(Packet* p, Handler* h)
 			if(hf->ect()){
 				hf->ce() = 1;
 			}
-
- 			// printf("ce:%s\n", hf->ce());
- 			// printf("ect:%s\n", hf->ect());
- 			// printf("ecnecho(TCP):%s\n", hf->ecnecho());
-
- 			// printf("src addr %d, port%d\n", iph->saddr(),iph->sport());
- 			// printf("dst addr %d, port%d\n", iph->daddr(),iph->dport());
- 			// printf("flow id %d\n", iph->flowid());
  		}
  		PQ_last_time_recvd_ = now_;
-		//printf(">NEXT PQ Size: %f\n",PQ_current_q_util_);	
 
 	}
 	
 	Scheduler& s = Scheduler::instance();
 	if (dynamic_) {
-		//printf("isDynamic\n");
 		Event* e = (Event*)p;
 		e->time_= txt + delay_;
 		itq_->enque(p); // for convinience, use a queue to store packets in transit
 		s.schedule(this, p, txt + delay_);
 	} else if (avoidReordering_) {
-		//printf("avoidReordering_\n");
 		// code from Andrei Gurtov, to prevent reordering on
 		//   bandwidth or delay changes
  		double now_ = Scheduler::instance().clock();
@@ -210,7 +171,6 @@ void LinkDelay::reset()
 
 void LinkDelay::handle(Event* e)
 {
-	//printf("LinkDelay::handle\n");
 	Packet *p = itq_->deque();
 	assert(p->time_ == e->time_);
 	send(p, (Handler*) NULL);
@@ -218,7 +178,6 @@ void LinkDelay::handle(Event* e)
 
 void LinkDelay::pktintran(int src, int group)
 {
-	//printf("LinkDelay::pktintran\n");
 	int reg = 1;
 	int prune = 30;
 	int graft = 31;

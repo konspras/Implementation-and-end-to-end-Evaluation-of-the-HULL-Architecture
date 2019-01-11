@@ -73,11 +73,21 @@ proc saveArrayToFile { result_path file_ident sendTimesArray_ receiveTimesArray_
     upvar $receiveTimesArray_ receiveTimesArray
 
 
-    puts [array size receiveTimesArray]
-
+    #puts [array size receiveTimesArray]
+    # There is some sort of bug that manifests itself with all schemes (TCP, DCTCP, HULL)
+    # in which while the requests leave the client and are received by the servers, the servers
+    # don't respond after a number of requests (the tcpApp client_receive function is never called 
+    # (only for background traffic).. (in order and only for backgorund traffic). So,
+    # the length of the receive array will be used (with a warning) for now but this is an issue.
+    # Link speed, tcp_tick, windowOption, link latency or the extra time after the simulation ends
+    # do not affect the number of request responses rcved.
     set sfp [open "$result_path/send_times|$file_ident.csv" w+]
     set rfp [open "$result_path/rec_times|$file_ident.csv" w+]
-    set num_iter [array size sendTimesArray]
+    set send_size [array size sendTimesArray]
+    set num_iter [array size receiveTimesArray]
+    if {$send_size > $num_iter} {
+        puts "Warning: Not all requests got answered. See comment in util.tcl -> saveArrayToFile() "
+    }
     for {set i 0} {$i < $num_iter} {incr i} {
         puts -nonewline $sfp $sendTimesArray($i)
         puts -nonewline $rfp $receiveTimesArray($i)

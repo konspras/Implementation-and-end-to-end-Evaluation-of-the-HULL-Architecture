@@ -1,3 +1,4 @@
+#!/bin/bash
 # file_name='nofanout_20_9flows'
 # file_name='nofanout_40_9flows'
 # file_name='nofanout_60_9flows'
@@ -5,7 +6,7 @@
 
 
 # 30% for around 12,000 requests and a total of 25Mbps
-file_name='onlyfanout_wkld1_30_10flows'
+# file_name='onlyfanout_wkld1_30_10flows'
 # file_name='bkg200_fanout_wkld1_30_10flows'
 # file_name='bkg400_fanout_wkld1_30_10flows'
 # file_name='bkg600_fanout_wkld1_30_10flows'
@@ -14,7 +15,14 @@ file_name='onlyfanout_wkld1_30_10flows'
 #file_name='onlyfanout_wkld0_5_10flows'
 #file_name='bkg200_fanout_wkld0_5_10flows'
 #file_name='bkg400_fanout_wkld0_5_10flows'
-#file_name='bkg600_fanout_wkld0_5_10flows'
+# file_name='bkg600_fanout_wkld0_5_10flows'
+
+
+# 3% for around 30,000 requests and 9.6 Mbps
+file_name='onlyfanout_wkld0_3_40flows'
+# file_name='bkg200_fanout_wkld0_3_40flows'
+# file_name='bkg400_fanout_wkld0_3_40flows'
+# file_name='bkg600_fanout_wkld0_3_40flows'
 
 # for 20% load: for: 0.09, back 200 (20% of requests are backg and 80% are fore)
 # for 40% 0.18 400
@@ -22,15 +30,15 @@ file_name='onlyfanout_wkld1_30_10flows'
 
 # General parameters
 have_fanout='1'
-loads='30'
-workload_types='1'
+loads='3'
+workload_types='0'
 have_bkg='0'
 background_traffic='200'
 have_frg='0'
 foreground_traffic='0.27'
 
 link_speed='1000'
-nums_flows='10'
+nums_flows='40'
 q_size='500'
 
 PQ_on='0'

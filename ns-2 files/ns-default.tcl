@@ -553,9 +553,6 @@ Application/Traffic/CBR set maxpkts_ 268435456; # 0x10000000
 
 Application/Telnet set interval_ 1.0
 
-Application/Simple set load_ 0.1
-Application/Simple set packetSize_ 100
-
 # Default config based on data for slammer worm
 Application/Worm set ScanRate 4000
 Application/Worm set ScanPort 1434

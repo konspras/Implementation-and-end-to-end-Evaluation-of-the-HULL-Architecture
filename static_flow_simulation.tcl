@@ -12,7 +12,8 @@ set PQ_rate [lindex $argv 5]
 set PQ_thresh [lindex $argv 6]
 set queue_size [lindex $argv 7]
 set has_pacer [lindex $argv 8]
-set label [lindex $argv 9]
+set link_latency [lindex $argv 9]ms
+set label [lindex $argv 10]
 
 
 # in bits (as hw impl of HULL)
@@ -24,7 +25,7 @@ set pacer_rate 100.0M
 set pacer_qlen $queue_size
 
 # in ms - 5micro
-set link_latency 0.005ms
+#set link_latency 0.005ms
 #set link_latency 0.1ms
 
 # DCTCP

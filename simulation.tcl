@@ -39,11 +39,11 @@ set link_latency 0.005ms
 
 set DCTCP_g  [expr 1.0/16.0]
 
-set simulation_duration 400.0
+set simulation_duration 200.0
 set traffic_start_time 1.0
-set background_traffic_duration 300.0
-set foreground_traffic_duration 300.0
-set fanout_traffic_duration 300.0
+set background_traffic_duration 100.0
+set foreground_traffic_duration 100.0
+set fanout_traffic_duration 100.0
 # in packets
 Queue set limit_ $queue_size
 Queue/DropTail set drop_prio_ false
@@ -109,7 +109,7 @@ for {set i 0} {$i < $num_workloads} {incr i} {
         set pace [expr  8 * $resp_size($i) / $exp_distr_mean($i) / 1000000.0]
         set pkts_per_req [expr ceil( $req_size($i) / 950.0 )]
         set pkts_to_be_sent [expr 1 / $exp_distr_mean($i) * $fanout_traffic_duration * $pkts_per_req]
-        puts "Packets expected to be sent by fanout workload $wk_type($i) = $pkts_to_be_sent"
+        puts "Packets expected to be sent per flow by fanout workload $wk_type($i) = $pkts_to_be_sent"
         puts "Mean pace of fanout workload $wk_type($i) = $pace (Mbps)"
         puts "Mean total traffic of fanout workload $wk_type($i) = [expr $num_flows*$pace] (Mbps)"
     }
