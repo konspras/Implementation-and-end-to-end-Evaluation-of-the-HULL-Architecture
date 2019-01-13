@@ -22,7 +22,6 @@ proc calculate_throuhput { flow_id bytes_sent bytes_retr wkld sendTimesList rece
 proc dispRes { num_flows num_workloads sendTimesList receiveTimesList } {  
     global tcp_ll
     for {set wkld 0} {$wkld < $num_workloads} {incr wkld} {
-        puts "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~Workload $wkld~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
         for {set i 0} {$i < $num_flows} {incr i} {
             set tcp_agent [lindex [lindex $tcp_ll $i] $wkld]
 
