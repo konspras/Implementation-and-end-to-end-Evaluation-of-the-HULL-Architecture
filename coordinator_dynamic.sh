@@ -43,19 +43,19 @@ do
 	traffic_duration=${traf[$indx]}
 
 
-	echo "TCP-DROPTAIL"
-	result_path="results/$file_name/TCP"
-	mkdir -p $result_path
+	# echo "TCP-DROPTAIL"
+	# result_path="results/$file_name/TCP"
+	# mkdir -p $result_path
 
-	PQ_on='0'
-	DCTCP='0'
-	pacer_on='0'
+	# PQ_on='0'
+	# DCTCP='0'
+	# pacer_on='0'
 
-	ns simulation_final.tcl $result_path $loads $nums_flows $loads $workload_types \
-		$DCTCP $link_speed $PQ_on $PQ_rate $PQ_thresh $q_size $pacer_on \
-		$have_bkg $background_traffic $have_frg $foreground_traffic $have_fanout \
-		$pacer_bucket $link_latency $traffic_duration
-	echo "----------------------------------------------------------------------"
+	# ns simulation_3.tcl $result_path $loads $nums_flows $loads $workload_types \
+	# 	$DCTCP $link_speed $PQ_on $PQ_rate $PQ_thresh $q_size $pacer_on \
+	# 	$have_bkg $background_traffic $have_frg $foreground_traffic $have_fanout \
+	# 	$pacer_bucket $link_latency $traffic_duration
+	# echo "----------------------------------------------------------------------"
 
 
 	echo "DCTCP-30K"
@@ -63,10 +63,10 @@ do
 	mkdir -p $result_path
 
 	PQ_on='0'
-	DCTCP='32'
+	DCTCP='30'
 	pacer_on='0'
 
-	ns simulation_final.tcl $result_path $loads $nums_flows $loads $workload_types \
+	ns simulation_3.tcl $result_path $loads $nums_flows $loads $workload_types \
 		$DCTCP $link_speed $PQ_on $PQ_rate $PQ_thresh $q_size $pacer_on \
 		$have_bkg $background_traffic $have_frg $foreground_traffic $have_fanout \
 		$pacer_bucket $link_latency $traffic_duration
@@ -81,27 +81,27 @@ do
 	DCTCP='6'
 	pacer_on='1'
 
-	ns simulation_final.tcl $result_path $loads $nums_flows $loads $workload_types \
+	ns simulation_3.tcl $result_path $loads $nums_flows $loads $workload_types \
 		$DCTCP $link_speed $PQ_on $PQ_rate $PQ_thresh $q_size $pacer_on \
 		$have_bkg $background_traffic $have_frg $foreground_traffic $have_fanout \
 		$pacer_bucket $link_latency $traffic_duration
 	echo "----------------------------------------------------------------------"
 
 
-	echo "DCTCP_pacer_PQ_95_1000"
-	result_path="results/$file_name/DCTCP_pacer_PQ"
-	mkdir -p $result_path
+	# echo "DCTCP_pacer_PQ_95_1000"
+	# result_path="results/$file_name/DCTCP_pacer_PQ"
+	# mkdir -p $result_path
 
-	DCTCP='500'
-	PQ_on='1'
-	PQ_rate='0.95'
-	PQ_thresh='1000.0'
-	pacer_on='1'
+	# DCTCP='500'
+	# PQ_on='1'
+	# PQ_rate='0.95'
+	# PQ_thresh='1000.0'
+	# pacer_on='1'
 
-	ns simulation_final.tcl $result_path $loads $nums_flows $loads $workload_types \
-		$DCTCP $link_speed $PQ_on $PQ_rate $PQ_thresh $q_size $pacer_on \
-		$have_bkg $background_traffic $have_frg $foreground_traffic $have_fanout \
-		$pacer_bucket $link_latency $traffic_duration
+	# ns simulation_3.tcl $result_path $loads $nums_flows $loads $workload_types \
+	# 	$DCTCP $link_speed $PQ_on $PQ_rate $PQ_thresh $q_size $pacer_on \
+	# 	$have_bkg $background_traffic $have_frg $foreground_traffic $have_fanout \
+	# 	$pacer_bucket $link_latency $traffic_duration
 
 	let indx++
 done

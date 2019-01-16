@@ -11,7 +11,7 @@ do
 	echo "Number of flows: $num_flows"
 	ns static_flow_simulation.tcl $path $num_flows 0 $link_speed 0 0.95 1000 500 0 $link_latency TCP
 	echo ---------------------------------------------------------------------------
-	ns static_flow_simulation.tcl $path $num_flows 32 $link_speed 0 0.95 1000 500 0 $link_latency DCTCP
+	ns static_flow_simulation.tcl $path $num_flows 30 $link_speed 0 0.95 1000 500 0 $link_latency DCTCP
 	echo ---------------------------------------------------------------------------
 	ns static_flow_simulation.tcl $path $num_flows 6 $link_speed 0 0.95 1000 500 1 $link_latency DCTCP6_Pacer
 	echo ---------------------------------------------------------------------------

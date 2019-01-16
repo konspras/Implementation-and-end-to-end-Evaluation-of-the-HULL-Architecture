@@ -25,7 +25,7 @@ bkg=($background_traffic_list)
 link_speed='1000'
 # in ms
 link_latency='0.005'
-traffic_durations='250 250 250 250'
+traffic_durations='150 150 150 150'
 traf=($traffic_durations)
 nums_flows='10'
 q_size='500'
@@ -52,7 +52,7 @@ do
 	DCTCP='0'
 	pacer_on='0'
 
-	ns simulation_final.tcl $result_path $loads $nums_flows $loads $workload_types \
+	ns simulation_3.tcl $result_path $loads $nums_flows $loads $workload_types \
 		$DCTCP $link_speed $PQ_on $PQ_rate $PQ_thresh $q_size $pacer_on \
 		$have_bkg $background_traffic $have_frg $foreground_traffic $have_fanout \
 		$pacer_bucket $link_latency $traffic_duration
@@ -64,10 +64,10 @@ do
 	mkdir -p $result_path
 
 	PQ_on='0'
-	DCTCP='32'
+	DCTCP='30'
 	pacer_on='0'
 
-	ns simulation_final.tcl $result_path $loads $nums_flows $loads $workload_types \
+	ns simulation_3.tcl $result_path $loads $nums_flows $loads $workload_types \
 		$DCTCP $link_speed $PQ_on $PQ_rate $PQ_thresh $q_size $pacer_on \
 		$have_bkg $background_traffic $have_frg $foreground_traffic $have_fanout \
 		$pacer_bucket $link_latency $traffic_duration
@@ -84,7 +84,7 @@ do
 	PQ_thresh='1000.0'
 	pacer_on='1'
 
-	ns simulation_final.tcl $result_path $loads $nums_flows $loads $workload_types \
+	ns simulation_3.tcl $result_path $loads $nums_flows $loads $workload_types \
 		$DCTCP $link_speed $PQ_on $PQ_rate $PQ_thresh $q_size $pacer_on \
 		$have_bkg $background_traffic $have_frg $foreground_traffic $have_fanout \
 		$pacer_bucket $link_latency $traffic_duration

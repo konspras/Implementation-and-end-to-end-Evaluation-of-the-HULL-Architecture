@@ -50,7 +50,7 @@ do
 	mkdir -p $result_path
 
 	PQ_on='0'
-	DCTCP='32'
+	DCTCP='30'
 	pacer_on='0'
 
 	ns simulation_3.tcl $result_path $loads $nums_flows $loads $workload_types \

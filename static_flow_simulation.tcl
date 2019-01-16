@@ -44,9 +44,11 @@ if {$has_PQ == 0} {
 } else {
     Queue/RED set setbit_ false
 }
-# Queue/RED set bytes_ false
+# Defaults
+# Queue/RED set bytes_ true
 # Queue/RED set queue_in_bytes_ true
-# Queue/RED set mean_pktsize_ $pktSize
+# with mean pkt size 1000, by setting the threshold to 30 we get 30KB
+Queue/RED set mean_pktsize_ 1000
 Queue/RED set gentle_ false
 Queue/RED set q_weight_ 1.0
 Queue/RED set mark_p_ 1.0
