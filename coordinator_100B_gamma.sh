@@ -40,7 +40,7 @@ for file_name in $file_names
 do
 	echo $file_name
 	background_traffic=${bkg[$indx]}
-	have_bkg=${hv_bkg[$index]}
+	have_bkg=${hv_bkg[$indx]}
 	traffic_duration=${traf[$indx]}
 
 

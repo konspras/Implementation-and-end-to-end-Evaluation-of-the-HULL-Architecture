@@ -3,7 +3,7 @@
 # for 20% load: for: 0.09, back 200 (20% of requests are backg and 80% are fore)
 # for 40% 0.18 400
 # for 60% 0.27 600
-file_names=''onlyfanout_wkld1_30_10flows' 'bkg200_fanout_wkld1_30_10flows' 'bkg400_fanout_wkld1_30_10flows' 'bkg600_fanout_wkld1_30_10flows''
+file_names=''bkg200_fanout_wkld1_30_10flows' 'bkg400_fanout_wkld1_30_10flows' 'bkg600_fanout_wkld1_30_10flows''
 indx=0
 
 
@@ -12,11 +12,12 @@ have_fanout='1'
 loads='30'
 workload_types='1'
 
-have_bkg_list='0 1 1 1'
-background_traffic_list='1 200 400 600'
+#have_bkg_list='0 1 1 1'
+have_bkg='1'
+background_traffic_list='200 400 600'
 have_frg='0'
 foreground_traffic='0.09'
-hv_bkg=($have_bkg_list)
+#hv_bkg=($have_bkg_list)
 bkg=($background_traffic_list)
 
 
@@ -25,7 +26,7 @@ bkg=($background_traffic_list)
 link_speed='1000'
 # in ms
 link_latency='0.005'
-traffic_durations='150 150 150 150'
+traffic_durations='150 150 150'
 traf=($traffic_durations)
 nums_flows='10'
 q_size='500'
@@ -38,11 +39,11 @@ pacer_bucket='24000.0'
 
 for file_name in $file_names
 do
-	echo $file_name
 	background_traffic=${bkg[$indx]}
-	have_bkg=${hv_bkg[$index]}
+	#have_bkg=${hv_bkg[$index]}
 	traffic_duration=${traf[$indx]}
 
+	echo "$file_name $background_traffic $traffic_duration"
 
 	echo "TCP-DROPTAIL"
 	result_path="results/$file_name/TCP"
