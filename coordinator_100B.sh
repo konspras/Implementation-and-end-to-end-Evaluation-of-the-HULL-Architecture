@@ -40,7 +40,7 @@ for file_name in $file_names
 do
 	echo $file_name
 	background_traffic=${bkg[$indx]}
-	have_bkg=${hv_bkg[$index]}
+	have_bkg=${hv_bkg[$indx]}
 	traffic_duration=${traf[$indx]}
 
 
@@ -52,7 +52,7 @@ do
 	DCTCP='0'
 	pacer_on='0'
 
-	ns simulation_3.tcl $result_path $loads $nums_flows $loads $workload_types \
+	ns simulation.tcl $result_path $loads $nums_flows $loads $workload_types \
 		$DCTCP $link_speed $PQ_on $PQ_rate $PQ_thresh $q_size $pacer_on \
 		$have_bkg $background_traffic $have_frg $foreground_traffic $have_fanout \
 		$pacer_bucket $link_latency $traffic_duration
@@ -67,7 +67,7 @@ do
 	DCTCP='30'
 	pacer_on='0'
 
-	ns simulation_3.tcl $result_path $loads $nums_flows $loads $workload_types \
+	ns simulation.tcl $result_path $loads $nums_flows $loads $workload_types \
 		$DCTCP $link_speed $PQ_on $PQ_rate $PQ_thresh $q_size $pacer_on \
 		$have_bkg $background_traffic $have_frg $foreground_traffic $have_fanout \
 		$pacer_bucket $link_latency $traffic_duration
@@ -84,7 +84,7 @@ do
 	PQ_thresh='1000.0'
 	pacer_on='1'
 
-	ns simulation_3.tcl $result_path $loads $nums_flows $loads $workload_types \
+	ns simulation.tcl $result_path $loads $nums_flows $loads $workload_types \
 		$DCTCP $link_speed $PQ_on $PQ_rate $PQ_thresh $q_size $pacer_on \
 		$have_bkg $background_traffic $have_frg $foreground_traffic $have_fanout \
 		$pacer_bucket $link_latency $traffic_duration

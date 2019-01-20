@@ -3,6 +3,9 @@ find_tool.sh
 # Csv files
 *.csv
 
+# Plots
+*.png
+
 # Nam and trace files (ns-2)
 *.nam
 *.tr

@@ -28,6 +28,8 @@ set have_fanout_traffic [lindex $argv 16]
 
 # in bits (as hw impl of HULL) - 24000
 set pacer_bucket_ [lindex $argv 17]
+set link_latency [lindex $argv 18]ms
+set traffic_duration [lindex $argv 19]
 # not sure in what (bits/s)
 set pacer_rate 100.0M
 #set pacer_rate [expr $link_speed + 50 ]
@@ -35,15 +37,15 @@ set pacer_rate 100.0M
 set pacer_qlen $queue_size
 
 # in ms - 5micro
-set link_latency 0.005ms
+#set link_latency 0.005ms
 
 set DCTCP_g  [expr 1.0/16.0]
 
-set simulation_duration 200.0
+set simulation_duration [expr 100.0 + $traffic_duration]
 set traffic_start_time 1.0
-set background_traffic_duration 100.0
-set foreground_traffic_duration 100.0
-set fanout_traffic_duration 100.0
+set background_traffic_duration $traffic_duration
+set foreground_traffic_duration $traffic_duration
+set fanout_traffic_duration $traffic_duration
 # in packets
 Queue set limit_ $queue_size
 Queue/DropTail set drop_prio_ false
@@ -55,9 +57,11 @@ if {$has_PQ == 0} {
 } else {
     Queue/RED set setbit_ false
 }
-# Queue/RED set bytes_ false
+# Defaults
+# Queue/RED set bytes_ true
 # Queue/RED set queue_in_bytes_ true
-# Queue/RED set mean_pktsize_ $pktSize
+# with mean pkt size 1000, by setting the threshold to 30 we get 30KB
+Queue/RED set mean_pktsize_ 1000
 Queue/RED set gentle_ false
 Queue/RED set q_weight_ 1.0
 Queue/RED set mark_p_ 1.0
@@ -98,6 +102,10 @@ for {set i 0} {$i < $num_workloads} {incr i} {
         set resp_size($i) 1000000 
         # 10ms
         set mean_service_time_s($i) 0.01
+    } elseif {$wk_type($i) == 6} {
+        set req_size($i) 100
+        set resp_size($i) 100
+        set mean_service_time_s($i) 0.0001
     } else {
         set req_size($i) 3500
         set resp_size($i) 2800
@@ -128,8 +136,10 @@ proc finish {} {
     global ns nf tf qf tchan_ tcp_ll num_flows sendTimesList receiveTimesList result_path \
             file_ident DCTCP num_workloads wk_type bkg_send_times bkg_recv_times \
             frg_send_times frg_recv_times background_traffic_mbbps foreground_traffic_mbbps \
-            have_fanout_traffic have_bkg_traffic have_frg_traffic
-    # TODO: Fix dispRes (tcp)
+            have_fanout_traffic have_bkg_traffic have_frg_traffic cl_reqs_recv serv_reqs_rcved \
+            bkg_request_id fr_cl_reqs_recv fr_serv_reqs_rcved frg_request_id
+    # puts "BKG: REQS scheduled: $bkg_request_id || SERVER REQS RECVD: $serv_reqs_rcved || CL REQS RECV: $cl_reqs_recv"
+    # puts "FRG: REQS scheduled: $frg_request_id || SERVER REQS RECVD: $fr_serv_reqs_rcved || CL REQS RECV: $fr_cl_reqs_recv"
     if {$have_fanout_traffic} {
         dispRes $num_flows $num_workloads $sendTimesList $receiveTimesList
         for {set wkld 0} {$wkld < $num_workloads} {incr wkld} {
@@ -138,14 +148,15 @@ proc finish {} {
             saveListToFile $result_path "fanout" $send_lst $recv_lst $num_flows
         }
     }
-    if {$have_bkg_traffic} {
-        saveArrayToFile $result_path "background" \
-                        bkg_send_times bkg_recv_times
-    }
     if {$have_frg_traffic} {
         saveArrayToFile $result_path "foreground" \
                         frg_send_times frg_recv_times
     }
+    if {$have_bkg_traffic} {
+        saveArrayToFile $result_path "background" \
+                        bkg_send_times bkg_recv_times
+    }
+    
     $ns flush-trace
     #Close the NAM trace file
     #close $nf
@@ -220,7 +231,7 @@ for {set i 0} {$i < $num_flows} {incr i} {
         $server_pacer($i) set qlen_  $pacer_qlen
         $server_pacer($i) set rate_upd_interval_  0.000032
         if {$i == 0} {
-            $server_pacer($i) set verbose_ 1
+            $server_pacer($i) set verbose_ 0
             $server_pacer($i) set num_flows_ [expr 2*$num_flows]
         }
         $ns simplex-link-op $s($i) $switch_node insert-hullPacer $server_pacer($i)
@@ -271,8 +282,7 @@ Agent/TCP/FullTcp set segsperack_ 1;
 # delayed ack (repr has it at 0.000006, ex has it at 0.04, def is 0.1)
 Agent/TCP/FullTcp set interval_ 0.000006
 # set at 600 bcs not sure of how a 1KB PQ threshold is supposed to work with 1500B
-# packets. DCTCP K is in packets. So to get 30K need to set it to 30,000/600 = 50
-# and for 6K: 6000/600 = 10
+# packets. DCTCP K is in packets. So to get 30K need to set it to 30,000/950 = 32
 Agent/TCP/FullTcp set segsize_ 950
 
 if {$DCTCP != 0} {
@@ -453,8 +463,13 @@ if {$have_fanout_traffic} {
         # Interval depends on desired load. For load 1, a query is sent at an interval
         # equal to the servers mean service time.
         $send_interval set avg_ $exp_distr_mean($wkld)
-        $gamma_var($wkld) set alpha_ 0.7
-        $gamma_var($wkld) set beta_ 20000
+        if {$wk_type($wkld) == 6 } {
+            $gamma_var($wkld) set alpha_ 0.7
+            $gamma_var($wkld) set beta_ 790
+        } else {
+            $gamma_var($wkld) set alpha_ 0.7
+            $gamma_var($wkld) set beta_ 20000
+        }
 
         # Send requests for $simulation duration time
         set query_id 0
@@ -543,22 +558,27 @@ puts "Foreground traffic scheduled"
 
 }
 
-
+set cl_reqs_recv 0
+set serv_reqs_rcved 0
+set fr_cl_reqs_recv 0
+set fr_serv_reqs_rcved 0
 
 # ----------------------- Request sending times set -----------------------
 # ----------------------------- Handle them -------------------------------
 array set bkg_recv_times {}
 Application/TcpApp instproc bkg-client-recv { size server_id request_id } {
-        global ns bkg_recv_times
+        global ns bkg_recv_times cl_reqs_recv
         # puts ">>>>$request_id $server_id"
         set bkg_recv_times($request_id) [$ns now]   
+        incr cl_reqs_recv
 }
 
 array set frg_recv_times {}
 Application/TcpApp instproc frg-client-recv { size server_id request_id } {
-        global ns frg_recv_times
+        global ns frg_recv_times fr_cl_reqs_recv
         
         set frg_recv_times($request_id) [$ns now]
+        incr fr_cl_reqs_recv
 }
 
 Application/TcpApp instproc client-recv { size server_id query_id wkld_indx} {
@@ -582,7 +602,8 @@ Application/TcpApp instproc client-recv { size server_id query_id wkld_indx} {
 }
 
 Application/TcpApp instproc bkg-server-recv { size server_id request_id } {
-        global ns app_client_bkg app_server_bkg
+        global ns app_client_bkg app_server_bkg serv_reqs_rcved
+        incr serv_reqs_rcved
         # puts ">>Server $server_id received request $request_id"
         # Respond when the query has been processed
         set cur_time [$ns now]
@@ -595,7 +616,8 @@ Application/TcpApp instproc bkg-server-recv { size server_id request_id } {
 }
 
 Application/TcpApp instproc frg-server-recv { size server_id request_id } {
-        global ns app_client_frg app_server_frg
+        global ns app_client_frg app_server_frg fr_serv_reqs_rcved
+        incr fr_serv_reqs_rcved
         # Respond when the query has been processed
         set cur_time [$ns now]
         # 900B
@@ -627,6 +649,8 @@ Application/TcpApp instproc server-recv { size server_id query_id wkld_id wkld_i
             set query_proc_time $mean_service_time_s($wkld_indx)
         } elseif {$wkld_id == 1 || $wkld_id == 2} {
             set query_proc_time [expr [expr 180 * [$gamma_var($wkld_indx) value] + 10000.0]/1000000000.0]
+        } elseif {$wkld_id == 6} {
+            set query_proc_time [expr [expr 180 * [$gamma_var($wkld_indx) value] + 400.0]/1000000000.0]
         }
         #puts "query_proc_time $query_proc_time"
         set query_done_at [expr $query_proc_time + $process_this_query_at]
