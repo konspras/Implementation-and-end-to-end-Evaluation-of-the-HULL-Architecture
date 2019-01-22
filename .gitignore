@@ -1,10 +1,11 @@
 find_tool.sh
 
-# Csv files
-*.csv
 
 # Plots
 *.png
+
+# Log files
+log/
 
 # Nam and trace files (ns-2)
 *.nam

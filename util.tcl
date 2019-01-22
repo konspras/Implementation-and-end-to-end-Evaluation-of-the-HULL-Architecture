@@ -19,7 +19,7 @@ proc calculate_throuhput { flow_id bytes_sent bytes_retr wkld sendTimesList rece
 
 }
 
-proc dispRes { num_flows num_workloads sendTimesList receiveTimesList } {  
+proc dispRes { num_flows num_workloads sendTimesList receiveTimesList log_file} {  
     global tcp_ll
     for {set wkld 0} {$wkld < $num_workloads} {incr wkld} {
         for {set i 0} {$i < $num_flows} {incr i} {
@@ -35,6 +35,7 @@ proc dispRes { num_flows num_workloads sendTimesList receiveTimesList } {
             set numTimesCwdReduce [$tcp_agent set ncwndcuts_]
             set numTimesCwdRedCong [$tcp_agent set ncwndcuts1_]
             puts "============================================="
+            puts $log_file "============================================="
             calculate_throuhput $i $numBytesSent $numRexMitBytes $wkld $sendTimesList $receiveTimesList
             puts "Packets sent by tcp agent $i: $numPktsSent"
             puts "Packets retransmitted by tcp agent $i: $numPktsRetr"
@@ -43,6 +44,13 @@ proc dispRes { num_flows num_workloads sendTimesList receiveTimesList } {
             puts "Times cwnd was reduced bcs of ecn at $i: $numEcnAffected"
             puts "Times cwnd was reduced at $i: $numTimesCwdReduce"
             puts "Times cwnd was reduced bcs of cong at $i: $numTimesCwdRedCong"
+            puts $log_file "Packets sent by tcp agent $i: $numPktsSent"
+            puts $log_file "Packets retransmitted by tcp agent $i: $numPktsRetr"
+            puts $log_file "Acks received by tcp agent $i: $numAcksRec"
+            puts $log_file "Num of retr timeouts when there was data outstanding at $i: $numRexMit"
+            puts $log_file "Times cwnd was reduced bcs of ecn at $i: $numEcnAffected"
+            puts $log_file "Times cwnd was reduced at $i: $numTimesCwdReduce"
+            puts $log_file "Times cwnd was reduced bcs of cong at $i: $numTimesCwdRedCong"
         }
 
     }

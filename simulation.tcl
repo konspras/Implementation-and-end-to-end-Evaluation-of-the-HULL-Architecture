@@ -123,12 +123,14 @@ for {set i 0} {$i < $num_workloads} {incr i} {
     }
 }
 
-
+file mkdir "log/$result_path"
+set log_fp [open "log/$result_path/$file_ident|log" w]
 proc monitor_progress {} {
-    global ns simulation_duration num_flows tcp_bkg
+    global ns simulation_duration num_flows tcp_bkg log_fp
     set time [$ns now]
     
     puts ">>Simulation is at second $time out of $simulation_duration"
+    puts $log_fp "Simulation is at second $time out of $simulation_duration"
     $ns at [expr $time + 5.0] monitor_progress
 }
 #Define a 'finish' procedure
@@ -137,11 +139,11 @@ proc finish {} {
             file_ident DCTCP num_workloads wk_type bkg_send_times bkg_recv_times \
             frg_send_times frg_recv_times background_traffic_mbbps foreground_traffic_mbbps \
             have_fanout_traffic have_bkg_traffic have_frg_traffic cl_reqs_recv serv_reqs_rcved \
-            bkg_request_id fr_cl_reqs_recv fr_serv_reqs_rcved frg_request_id
+            bkg_request_id fr_cl_reqs_recv fr_serv_reqs_rcved frg_request_id log_fp
     # puts "BKG: REQS scheduled: $bkg_request_id || SERVER REQS RECVD: $serv_reqs_rcved || CL REQS RECV: $cl_reqs_recv"
     # puts "FRG: REQS scheduled: $frg_request_id || SERVER REQS RECVD: $fr_serv_reqs_rcved || CL REQS RECV: $fr_cl_reqs_recv"
     if {$have_fanout_traffic} {
-        dispRes $num_flows $num_workloads $sendTimesList $receiveTimesList
+        dispRes $num_flows $num_workloads $sendTimesList $receiveTimesList $log_fp
         for {set wkld 0} {$wkld < $num_workloads} {incr wkld} {
             set send_lst [lindex $sendTimesList $wkld]
             set recv_lst [lindex $receiveTimesList $wkld]
@@ -165,6 +167,7 @@ proc finish {} {
     #     close $tchan_
     # }
     close $qf
+    close $log_fp
     #Execute NAM on the trace file
     #exec nam out.nam &
     exit 0
