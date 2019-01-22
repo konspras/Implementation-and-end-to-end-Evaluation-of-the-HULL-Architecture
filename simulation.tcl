@@ -71,6 +71,8 @@ Queue/RED set maxthresh_ $DCTCP
 Queue/RED set drop_prio_ false
 Queue/RED set deque_prio_ false
 
+file mkdir "log/$result_path"
+set log_fp [open "log/$result_path/$file_ident|log" w]
 
 set num_workloads [string length $workload_type]
 for {set i 0} {$i < $num_workloads} {incr i} {
@@ -106,6 +108,11 @@ for {set i 0} {$i < $num_workloads} {incr i} {
         set req_size($i) 100
         set resp_size($i) 100
         set mean_service_time_s($i) 0.0001
+    # USR workload
+    } elseif {$wk_type($i) == 7} {
+        set req_size($i) 20
+        set resp_size($i) 2
+        set mean_service_time_s($i) 0.00001
     } else {
         set req_size($i) 3500
         set resp_size($i) 2800
@@ -120,11 +127,13 @@ for {set i 0} {$i < $num_workloads} {incr i} {
         puts "Packets expected to be sent per flow by fanout workload $wk_type($i) = $pkts_to_be_sent"
         puts "Mean pace of fanout workload $wk_type($i) = $pace (Mbps)"
         puts "Mean total traffic of fanout workload $wk_type($i) = [expr $num_flows*$pace] (Mbps)"
+        puts $log_fp "Packets expected to be sent per flow by fanout workload $wk_type($i) = $pkts_to_be_sent"
+        puts $log_fp "Mean pace of fanout workload $wk_type($i) = $pace (Mbps)"
+        puts $log_fp "Mean total traffic of fanout workload $wk_type($i) = [expr $num_flows*$pace] (Mbps)"
     }
 }
 
-file mkdir "log/$result_path"
-set log_fp [open "log/$result_path/$file_ident|log" w]
+
 proc monitor_progress {} {
     global ns simulation_duration num_flows tcp_bkg log_fp
     set time [$ns now]
@@ -648,7 +657,7 @@ Application/TcpApp instproc server-recv { size server_id query_id wkld_id wkld_i
                 set process_this_query_at $occupied_until
                 #puts "currently busy"
         }
-        if {$wkld_id == 0 || $wkld_id == 3 || $wkld_id == 4 || $wkld_id == 5} {
+        if {$wkld_id == 0 || $wkld_id == 3 || $wkld_id == 4 || $wkld_id == 5 || $wkld_id == 7} {
             set query_proc_time $mean_service_time_s($wkld_indx)
         } elseif {$wkld_id == 1 || $wkld_id == 2} {
             set query_proc_time [expr [expr 180 * [$gamma_var($wkld_indx) value] + 10000.0]/1000000000.0]
