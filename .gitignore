@@ -6,6 +6,7 @@ find_tool.sh
 
 # Log files
 log/
+*.out
 
 # Nam and trace files (ns-2)
 *.nam
