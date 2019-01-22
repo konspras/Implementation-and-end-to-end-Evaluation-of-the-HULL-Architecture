@@ -649,7 +649,7 @@ Application/TcpApp instproc server-recv { size server_id query_id wkld_id wkld_i
                         Server is busy until [lindex $busy_until $server_id]"
         set cur_time [$ns now]
         set occupied_until [lindex $busy_until $server_id]
-        #mathfunc was added in tcl 8.5...
+
         if {$cur_time > $occupied_until} {
                 set process_this_query_at $cur_time
                 #puts "Processing right away"
