@@ -3,13 +3,13 @@
 # for 20% load: for: 0.09, back 200 (20% of requests are backg and 80% are fore)
 # for 40% 0.18 400
 # for 60% 0.27 600
-file_names=''usr_onlyfanout_wkld7_01_40flows' 'usr_bkg200_fanout_wkld7_01_40flows' 'usr_bkg400_fanout_wkld7_01_40flows' 'usr_bkg600_fanout_wkld7_01_40flows''
+file_names=''usr_onlyfanout_wkld7_30_40flows' 'usr_bkg200_fanout_wkld7_30_40flows' 'usr_bkg400_fanout_wkld7_30_40flows' 'usr_bkg600_fanout_wkld7_30_40flows''
 indx=0
 
 
 # General parameters
 have_fanout='1'
-loads='01'
+loads='30'
 workload_types='7'
 
 have_bkg_list='0 1 1 1'
@@ -25,7 +25,8 @@ bkg=($background_traffic_list)
 link_speed='1000'
 # in ms
 link_latency='0.005'
-traffic_durations='100 100 100 100'
+# at 30% load and (20) + 10 second duration, 300,000 fanout requests are sent
+traffic_durations='30 30 30 30'
 traf=($traffic_durations)
 nums_flows='40'
 q_size='500'
@@ -52,7 +53,7 @@ do
 	DCTCP='0'
 	pacer_on='0'
 
-	ns simulation.tcl $result_path $loads $nums_flows $loads $workload_types \
+	ns simulation_stable_state.tcl $result_path $loads $nums_flows $loads $workload_types \
 		$DCTCP $link_speed $PQ_on $PQ_rate $PQ_thresh $q_size $pacer_on \
 		$have_bkg $background_traffic $have_frg $foreground_traffic $have_fanout \
 		$pacer_bucket $link_latency $traffic_duration &
@@ -66,7 +67,7 @@ do
 	DCTCP='30'
 	pacer_on='0'
 
-	ns simulation.tcl $result_path $loads $nums_flows $loads $workload_types \
+	ns simulation_stable_state.tcl $result_path $loads $nums_flows $loads $workload_types \
 		$DCTCP $link_speed $PQ_on $PQ_rate $PQ_thresh $q_size $pacer_on \
 		$have_bkg $background_traffic $have_frg $foreground_traffic $have_fanout \
 		$pacer_bucket $link_latency $traffic_duration &
@@ -82,7 +83,7 @@ do
 	PQ_thresh='1000.0'
 	pacer_on='1'
 
-	ns simulation.tcl $result_path $loads $nums_flows $loads $workload_types \
+	ns simulation_stable_state.tcl $result_path $loads $nums_flows $loads $workload_types \
 		$DCTCP $link_speed $PQ_on $PQ_rate $PQ_thresh $q_size $pacer_on \
 		$have_bkg $background_traffic $have_frg $foreground_traffic $have_fanout \
 		$pacer_bucket $link_latency $traffic_duration &
