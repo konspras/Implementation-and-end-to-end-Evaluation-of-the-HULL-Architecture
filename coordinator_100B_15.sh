@@ -3,13 +3,13 @@
 # for 20% load: for: 0.09, back 200 (20% of requests are backg and 80% are fore)
 # for 40% 0.18 400
 # for 60% 0.27 600
-file_names=''onlyfanout_wkld0_30_10flows' 'bkg200_fanout_wkld0_30_10flows' 'bkg400_fanout_wkld0_30_10flows' 'bkg600_fanout_wkld0_30_10flows''
+file_names=''onlyfanout_wkld0_15_10flows' 'bkg200_fanout_wkld0_15_10flows' 'bkg400_fanout_wkld0_15_10flows' 'bkg600_fanout_wkld0_15_10flows''
 indx=0
 
 
 # General parameters
 have_fanout='1'
-loads='30'
+loads='15'
 workload_types='0'
 
 have_bkg_list='0 1 1 1'

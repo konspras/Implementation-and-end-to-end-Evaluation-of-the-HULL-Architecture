@@ -142,7 +142,7 @@ proc monitor_progress {} {
     
     puts ">>Simulation is at second $time out of $simulation_duration"
     puts $log_fp "Simulation is at second $time out of $simulation_duration"
-    $ns at [expr $time + 5.0] monitor_progress
+    $ns at [expr $time + 1.0] monitor_progress
 }
 #Define a 'finish' procedure
 proc finish {} {

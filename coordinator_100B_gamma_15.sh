@@ -3,17 +3,17 @@
 # for 20% load: for: 0.09, back 200 (20% of requests are backg and 80% are fore)
 # for 40% 0.18 400
 # for 60% 0.27 600
-file_names=''onlyfanout_wkld0_30_10flows' 'bkg200_fanout_wkld0_30_10flows' 'bkg400_fanout_wkld0_30_10flows' 'bkg600_fanout_wkld0_30_10flows''
+file_names=''gamma_bkg200_fanout_wkld6_15_40flows' 'gamma_bkg400_fanout_wkld6_15_40flows''
 indx=0
 
 
 # General parameters
 have_fanout='1'
-loads='30'
-workload_types='0'
+loads='15'
+workload_types='6'
 
-have_bkg_list='0 1 1 1'
-background_traffic_list='1 200 400 600'
+have_bkg_list='1 1'
+background_traffic_list='200 400'
 have_frg='0'
 foreground_traffic='0.09'
 hv_bkg=($have_bkg_list)
@@ -25,9 +25,9 @@ bkg=($background_traffic_list)
 link_speed='1000'
 # in ms
 link_latency='0.005'
-traffic_durations='27 27 27 27'
+traffic_durations='27 27'
 traf=($traffic_durations)
-nums_flows='10'
+nums_flows='40'
 q_size='500'
 
 PQ_on='0'
@@ -42,20 +42,6 @@ do
 	background_traffic=${bkg[$indx]}
 	have_bkg=${hv_bkg[$indx]}
 	traffic_duration=${traf[$indx]}
-
-
-	echo "TCP-DROPTAIL"
-	result_path="results/$file_name/TCP"
-	mkdir -p $result_path
-
-	PQ_on='0'
-	DCTCP='0'
-	pacer_on='0'
-
-	ns simulation.tcl $result_path $loads $nums_flows $loads $workload_types \
-		$DCTCP $link_speed $PQ_on $PQ_rate $PQ_thresh $q_size $pacer_on \
-		$have_bkg $background_traffic $have_frg $foreground_traffic $have_fanout \
-		$pacer_bucket $link_latency $traffic_duration &
 
 
 	echo "DCTCP-30K"
