@@ -243,7 +243,7 @@ for {set i 0} {$i < $num_flows} {incr i} {
         $server_pacer($i) set qlen_  $pacer_qlen
         $server_pacer($i) set rate_upd_interval_  0.000032
         if {$i == 0} {
-            $server_pacer($i) set verbose_ 1
+            $server_pacer($i) set verbose_ 0
             $server_pacer($i) set num_flows_ [expr 2*$num_flows]
         }
         $ns simplex-link-op $s($i) $switch_node insert-hullPacer $server_pacer($i)
