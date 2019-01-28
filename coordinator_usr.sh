@@ -28,7 +28,7 @@ link_latency='0.005'
 # at 30% load and (20) + 3 second duration, 90,000 fanout requests are sent
 traffic_durations='22 22 22 22'
 traf=($traffic_durations)
-nums_flows='40'
+nums_flows='10'
 q_size='500'
 
 PQ_on='0'
